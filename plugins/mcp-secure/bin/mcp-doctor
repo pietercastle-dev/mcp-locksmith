@@ -1,0 +1,160 @@
+#!/usr/bin/env python3
+"""mcp-doctor — health-check the MCP secret chain.
+
+Verifies, for the current setup:
+  - mcp-secret / mcp-launch are reachable
+  - the configured secret backend CLI is installed and authenticated
+  - every secret reference in your MCP config(s) actually resolves
+
+References are resolved by calling mcp-secret; this NEVER prints secret values —
+only the reference and pass/fail. Exits non-zero if anything fails.
+
+Usage: mcp-doctor [config.json ...]
+  Defaults to ./.mcp.json and ~/.claude.json when no paths are given.
+"""
+import json
+import os
+import shutil
+import subprocess
+import sys
+
+G = "\033[1;32m"; R = "\033[1;31m"; Y = "\033[1;33m"; B = "\033[1;34m"; X = "\033[0m"
+def ok(m):   print(f"  {G}✔{X} {m}")
+def bad(m):  print(f"  {R}✘{X} {m}")
+def warn(m): print(f"  {Y}!{X} {m}")
+def tip(m):  print(f"  {B}i{X} {m}")
+def head(m): print(f"\n{B}=={X} {m}")
+
+fails = 0
+
+here = os.path.dirname(os.path.realpath(__file__))
+mcp_secret = os.environ.get("MCP_SECRET_BIN") or os.path.join(here, "mcp-secret")
+if not (mcp_secret and os.access(mcp_secret, os.X_OK)):
+    mcp_secret = shutil.which("mcp-secret")
+mcp_launch = os.path.join(here, "mcp-launch")
+if not os.access(mcp_launch, os.X_OK):
+    mcp_launch = shutil.which("mcp-launch")
+
+head("tooling")
+if mcp_secret:
+    ok(f"mcp-secret: {mcp_secret}")
+else:
+    bad("mcp-secret not found — run install.sh"); fails += 1
+if mcp_launch:
+    ok(f"mcp-launch: {mcp_launch}")
+else:
+    warn("mcp-launch not on PATH — project .mcp.json servers using it won't spawn")
+if shutil.which("sfw"):
+    ok("sfw present (Socket Firewall — install-time package protection)")
+else:
+    tip("optional: 'npm i -g sfw' to block malicious packages when installing MCP servers")
+
+# --- secret backend ---
+cfg_path = os.path.expanduser(os.environ.get("MCP_SECRET_CONFIG", "~/.config/mcp-secret/config"))
+cfg = {}
+if os.path.exists(cfg_path):
+    for line in open(cfg_path):
+        line = line.strip()
+        if line and not line.startswith("#") and "=" in line:
+            k, v = line.split("=", 1)
+            cfg[k.strip()] = v.strip()
+backend = cfg.get("MCP_SECRET_BACKEND")
+
+head("secret backend")
+if not backend:
+    warn(f"no default backend in {cfg_path} (only fully-qualified refs will resolve)")
+else:
+    ok(f"default backend: {backend}")
+    if backend == "op":
+        if not shutil.which("op"):
+            bad("op CLI not installed"); fails += 1
+        elif subprocess.run(["op", "whoami"], capture_output=True).returncode == 0:
+            ok("1Password signed in")
+        else:
+            bad("1Password not signed in (op signin)"); fails += 1
+    elif backend == "sops":
+        if not shutil.which("sops"):
+            bad("sops not installed"); fails += 1
+        keyfile = os.environ.get("SOPS_AGE_KEY_FILE") or os.path.expanduser("~/.config/sops/age/keys.txt")
+        if os.environ.get("SOPS_AGE_KEY") or os.path.exists(keyfile):
+            ok("age key present")
+        else:
+            warn(f"no age key at {keyfile} or $SOPS_AGE_KEY — decryption will fail")
+    elif backend == "bw":
+        if not shutil.which("bw"):
+            bad("bw CLI not installed"); fails += 1
+        else:
+            r = subprocess.run(["bw", "status"], capture_output=True, text=True)
+            try:
+                st = json.loads(r.stdout).get("status", "")
+            except Exception:
+                st = ""
+            if st == "unlocked":
+                ok("bitwarden unlocked")
+            else:
+                warn(f"bitwarden status: {st or 'unknown'} (bw unlock + export BW_SESSION)")
+        if not shutil.which("jq"):
+            warn("jq not installed (needed for bw refs)")
+
+
+def refs_from_server(spec):
+    refs = set()
+    args = spec.get("args") or []
+    i = 0
+    while i < len(args):
+        a = args[i]
+        if a in ("--secret", "--arg") and i + 1 < len(args):
+            pair = args[i + 1]; i += 2
+            if "=" in pair:
+                refs.add(pair.split("=", 1)[1])
+            continue
+        if a.startswith(("--secret=", "--arg=")):
+            pair = a.split("=", 1)[1]
+            if "=" in pair:
+                refs.add(pair.split("=", 1)[1])
+        i += 1
+    def scan(v):
+        if isinstance(v, str) and v.startswith(("op://", "sops://", "bw://")):
+            refs.add(v)
+    for v in args:
+        scan(v)
+    for v in (spec.get("env") or {}).values():
+        scan(v)
+    return refs
+
+
+paths = sys.argv[1:] or [p for p in ["./.mcp.json", os.path.expanduser("~/.claude.json")] if os.path.exists(p)]
+
+head("reference resolution")
+collected = []
+for p in paths:
+    try:
+        data = json.load(open(p))
+    except Exception as e:
+        warn(f"skip {p}: {e}"); continue
+    for name, spec in (data.get("mcpServers") or {}).items():
+        if isinstance(spec, dict):
+            for ref in refs_from_server(spec):
+                collected.append((name, ref))
+
+if not paths:
+    warn("no MCP config files found (./.mcp.json, ~/.claude.json)")
+elif not collected:
+    ok("no secret references found in configs")
+elif not mcp_secret:
+    bad("can't resolve references — mcp-secret missing"); fails += 1
+else:
+    for name, ref in collected:
+        r = subprocess.run([mcp_secret, ref], capture_output=True, text=True)
+        if r.returncode == 0 and r.stdout.strip():
+            ok(f"{name}: {ref}")
+        else:
+            bad(f"{name}: {ref} — {r.stderr.strip() or 'empty/failed'}"); fails += 1
+
+head("summary")
+if fails == 0:
+    print(f"  {G}all good{X}")
+    tip("run `mcp-pin verify` to check tools haven't changed since you approved them")
+    sys.exit(0)
+print(f"  {R}{fails} problem(s){X}")
+sys.exit(1)

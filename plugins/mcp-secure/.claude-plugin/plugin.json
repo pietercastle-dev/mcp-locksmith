@@ -1,0 +1,9 @@
+{
+  "name": "mcp-secure",
+  "displayName": "MCP Secure",
+  "version": "0.1.0",
+  "description": "Secret-safe MCP harness: resolver-backed secret injection, a vetting flow for new servers, and guard hooks that keep credentials out of config and out of model context.",
+  "author": { "name": "Pete" },
+  "keywords": ["mcp", "secrets", "security", "1password", "sops", "bitwarden"],
+  "license": "MIT"
+}

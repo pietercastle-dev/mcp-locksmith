@@ -1,0 +1,12 @@
+{
+  "_comment": "Always-on servers for this profile. These load in EVERY repo when this plugin is enabled — that's the global tier. Secrets use mcp-launch + a fully-qualified ref (op:// / sops:// / bw://), so no token is ever stored here. Replace the example with your real servers (Slack, internal search, etc.) and pin versions.",
+  "mcpServers": {
+    "slack-example": {
+      "command": "${CLAUDE_PLUGIN_ROOT}/bin/mcp-launch",
+      "args": [
+        "--secret", "SLACK_MCP_XOXP_TOKEN=op://Work/slack-mcp/token",
+        "--", "npx", "-y", "some-slack-mcp@PINNED_VERSION"
+      ]
+    }
+  }
+}

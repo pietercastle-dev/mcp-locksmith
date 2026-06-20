@@ -1,0 +1,21 @@
+{
+  "name": "mcp-locksmith",
+  "owner": {
+    "name": "Pete"
+  },
+  "metadata": {
+    "description": "Secret-safe MCP harness for Claude Code: machinery + a template for team-global servers."
+  },
+  "plugins": [
+    {
+      "name": "mcp-secure",
+      "source": "./plugins/mcp-secure",
+      "description": "Secret-safe MCP harness: resolver-backed secret injection, vetting flow, and guard hooks. Install everywhere."
+    },
+    {
+      "name": "mcp-globals",
+      "source": "./plugins/mcp-globals",
+      "description": "TEMPLATE for a profile of always-on servers (e.g. Slack at work, or a personal home set). Copy per profile; install where it applies."
+    }
+  ]
+}

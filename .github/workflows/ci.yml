@@ -1,0 +1,45 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Bash syntax
+        run: |
+          for f in plugins/mcp-secure/bin/mcp-secret \
+                   plugins/mcp-secure/bin/mcp-launch \
+                   plugins/mcp-secure/bin/mcp-bundles \
+                   install.sh; do
+            bash -n "$f"
+          done
+
+      - name: Python syntax
+        run: |
+          for f in plugins/mcp-secure/hooks/mcp-guard.py \
+                   plugins/mcp-secure/hooks/mcp-nudge.py \
+                   plugins/mcp-secure/bin/mcp-doctor \
+                   plugins/mcp-secure/bin/mcp-pin; do
+            python -c "import sys; compile(open(sys.argv[1]).read(), sys.argv[1], 'exec')" "$f"
+          done
+
+      - name: JSON valid
+        run: |
+          for f in .claude-plugin/marketplace.json \
+                   plugins/*/.claude-plugin/plugin.json \
+                   plugins/mcp-secure/hooks/hooks.json \
+                   plugins/mcp-secure/bundles/*.json \
+                   plugins/mcp-globals/.mcp.json; do
+            python -c "import json,sys; json.load(open(sys.argv[1]))" "$f"
+          done
+
+      - name: Guard hook tests
+        run: python plugins/mcp-secure/hooks/tests/test_guard.py

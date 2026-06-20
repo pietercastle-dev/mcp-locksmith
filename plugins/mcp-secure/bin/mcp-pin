@@ -1,0 +1,273 @@
+#!/usr/bin/env python3
+"""mcp-pin — pin MCP servers' tool definitions and detect drift (rug-pulls).
+
+Speaks just enough of the MCP protocol (a minimal stdio JSON-RPC client) to ask
+each configured server for its tool list, hashes the security-relevant fields
+(name/title/description/input+outputSchema/annotations), and compares against a
+stored baseline. A change to an already-approved tool is a rug-pull signal; a
+new/unknown tool is something to review for tool-poisoning before pinning.
+
+Discovers servers wherever they live — NO repo required:
+  - ./.mcp.json (when you're in a repo)
+  - ~/.claude.json: user-scope mcpServers + the current dir's project entry
+
+Pins live per-user at ~/.config/mcp-secret/pins.json, keyed by server identity
+(name + command + args) — so a version bump reads as "new, re-pin".
+
+Usage:
+  mcp-pin                 verify all discovered servers (default)
+  mcp-pin verify [name…]
+  mcp-pin pin [name…]     record/update the baseline (after vetting)
+  mcp-pin list            show what's pinned
+
+stdio servers only for now; http/sse are skipped with a note. Exit non-zero if
+any server drifts from its pin or fails to verify.
+"""
+import hashlib
+import json
+import os
+import queue
+import subprocess
+import sys
+import threading
+import time
+
+G = "\033[1;32m"; R = "\033[1;31m"; Y = "\033[1;33m"; B = "\033[1;34m"; X = "\033[0m"
+def ok(m):   print(f"  {G}✔{X} {m}")
+def bad(m):  print(f"  {R}✘{X} {m}")
+def warn(m): print(f"  {Y}!{X} {m}")
+def info(m): print(f"  {B}i{X} {m}")
+def head(m): print(f"\n{B}=={X} {m}")
+
+PINS = os.path.expanduser(os.environ.get("MCP_PINS_FILE", "~/.config/mcp-secret/pins.json"))
+TIMEOUT = float(os.environ.get("MCP_PIN_TIMEOUT", "20"))
+
+
+def load_pins():
+    try:
+        return json.load(open(PINS))
+    except Exception:
+        return {}
+
+
+def save_pins(p):
+    os.makedirs(os.path.dirname(PINS), exist_ok=True)
+    with open(PINS, "w") as f:
+        json.dump(p, f, indent=2, sort_keys=True)
+        f.write("\n")
+
+
+def expand(s):
+    return os.path.expandvars(s) if isinstance(s, str) else s
+
+
+def identity(name, command, args):
+    raw = name + "\0" + command + "\0" + json.dumps(args, sort_keys=True)
+    return hashlib.sha256(raw.encode()).hexdigest()[:16]
+
+
+def tool_hash(tool):
+    keep = {k: tool[k] for k in ("name", "title", "description", "inputSchema",
+                                 "outputSchema", "annotations") if k in tool}
+    return hashlib.sha256(json.dumps(keep, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+
+def discover():
+    servers = {}
+    home = os.path.expanduser("~")
+    cwd = os.getcwd()
+    p = os.path.join(cwd, ".mcp.json")
+    if os.path.exists(p):
+        try:
+            for n, s in (json.load(open(p)).get("mcpServers") or {}).items():
+                servers.setdefault(n, s)
+        except Exception as e:
+            warn(f"skip {p}: {e}")
+    try:
+        data = json.load(open(os.path.join(home, ".claude.json")))
+        for n, s in (data.get("mcpServers") or {}).items():
+            servers.setdefault(n, s)
+        for n, s in (((data.get("projects") or {}).get(cwd) or {}).get("mcpServers") or {}).items():
+            servers.setdefault(n, s)
+    except Exception:
+        pass
+    return servers
+
+
+def list_tools(spec):
+    """Launch a stdio server, handshake, return its tool dicts. Raises on failure."""
+    command = expand(spec.get("command", ""))
+    args = [expand(a) for a in (spec.get("args") or [])]
+    if not command:
+        raise RuntimeError("no command")
+    if "${" in command or any("${" in a for a in args):
+        raise RuntimeError("unresolved ${…} in command/args (plugin-scope server?)")
+    env = dict(os.environ)
+    for k, v in (spec.get("env") or {}).items():
+        env[k] = expand(v)
+
+    proc = subprocess.Popen([command] + args, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                            stderr=subprocess.DEVNULL, text=True, env=env)
+    deadline = time.time() + TIMEOUT
+    q = queue.Queue()
+
+    def reader():
+        try:
+            for line in proc.stdout:
+                q.put(line)
+        finally:
+            q.put(None)
+    threading.Thread(target=reader, daemon=True).start()
+
+    def send(msg):
+        proc.stdin.write(json.dumps(msg) + "\n")
+        proc.stdin.flush()
+
+    def recv(want_id):
+        while True:
+            remaining = deadline - time.time()
+            if remaining <= 0:
+                raise RuntimeError("timeout")
+            try:
+                line = q.get(timeout=remaining)
+            except queue.Empty:
+                raise RuntimeError("timeout")
+            if line is None:
+                raise RuntimeError("server closed stdout / exited")
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                msg = json.loads(line)
+            except Exception:
+                continue  # ignore non-JSON noise on stdout
+            if msg.get("id") == want_id:
+                return msg
+
+    try:
+        send({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {
+            "protocolVersion": "2025-06-18", "capabilities": {},
+            "clientInfo": {"name": "mcp-pin", "version": "0.1"}}})
+        resp = recv(1)
+        if "error" in resp:
+            raise RuntimeError(f"initialize error: {resp['error']}")
+        send({"jsonrpc": "2.0", "method": "notifications/initialized"})
+        tools, cursor, rid = [], None, 2
+        while True:
+            params = {} if cursor is None else {"cursor": cursor}
+            send({"jsonrpc": "2.0", "id": rid, "method": "tools/list", "params": params})
+            resp = recv(rid); rid += 1
+            if "error" in resp:
+                raise RuntimeError(f"tools/list error: {resp['error']}")
+            res = resp.get("result") or {}
+            tools.extend(res.get("tools") or [])
+            cursor = res.get("nextCursor")
+            if not cursor:
+                break
+        return tools
+    finally:
+        try:
+            proc.terminate(); proc.wait(timeout=3)
+        except Exception:
+            try:
+                proc.kill()
+            except Exception:
+                pass
+
+
+def current_hashes(spec):
+    return {t["name"]: tool_hash(t) for t in list_tools(spec) if isinstance(t, dict) and "name" in t}
+
+
+def is_remote(spec):
+    return spec.get("type") in ("http", "sse") or bool(spec.get("url"))
+
+
+def select(names):
+    servers = discover()
+    sel = {n: s for n, s in servers.items() if not names or n in names}
+    return sel
+
+
+def cmd_pin(names):
+    pins = load_pins()
+    sel = select(names)
+    if not sel:
+        warn("no matching servers found"); return 0
+    head("pinning")
+    fails = 0
+    for n, s in sel.items():
+        if is_remote(s):
+            warn(f"{n}: http/sse not supported yet — skipped"); continue
+        try:
+            hashes = current_hashes(s)
+        except Exception as e:
+            bad(f"{n}: {e}"); fails += 1; continue
+        cmd = expand(s.get("command", "")); args = [expand(a) for a in (s.get("args") or [])]
+        pins[identity(n, cmd, args)] = {
+            "name": n, "command": cmd, "args": args, "tools": hashes,
+            "pinnedAt": time.strftime("%Y-%m-%dT%H:%M:%S")}
+        ok(f"{n}: pinned {len(hashes)} tool(s)")
+    save_pins(pins)
+    return 1 if fails else 0
+
+
+def cmd_verify(names):
+    pins = load_pins()
+    sel = select(names)
+    if not sel:
+        warn("no matching servers found"); return 0
+    head("verifying")
+    fails = unpinned = 0
+    for n, s in sel.items():
+        if is_remote(s):
+            info(f"{n}: http/sse not supported yet — skipped"); continue
+        cmd = expand(s.get("command", "")); args = [expand(a) for a in (s.get("args") or [])]
+        pin = pins.get(identity(n, cmd, args))
+        try:
+            cur = current_hashes(s)
+        except Exception as e:
+            bad(f"{n}: cannot verify — {e}"); fails += 1; continue
+        if not pin:
+            warn(f"{n}: not pinned — review its tools, then `mcp-pin pin {n}`"); unpinned += 1; continue
+        old = pin.get("tools") or {}
+        added = sorted(t for t in cur if t not in old)
+        removed = sorted(t for t in old if t not in cur)
+        changed = sorted(t for t in cur if t in old and cur[t] != old[t])
+        if not (added or removed or changed):
+            ok(f"{n}: unchanged ({len(cur)} tools)")
+        else:
+            bad(f"{n}: DRIFT — changed={changed} added={added} removed={removed}")
+            bad(f"      a tool changed since you approved it (possible rug-pull). "
+                f"Re-vet, then `mcp-pin pin {n}`.")
+            fails += 1
+    head("summary")
+    if fails:
+        print(f"  {R}{fails} server(s) drifted/failed{X}")
+    elif unpinned:
+        print(f"  {Y}{unpinned} unpinned server(s) — review and pin{X}")
+    else:
+        print(f"  {G}all pinned servers unchanged{X}")
+    return 1 if fails else 0
+
+
+def cmd_list(_names):
+    pins = load_pins()
+    head("pinned servers")
+    if not pins:
+        info("none yet — run `mcp-pin pin`"); return 0
+    for v in sorted(pins.values(), key=lambda x: x.get("name", "")):
+        ok(f"{v.get('name')}: {len(v.get('tools') or {})} tool(s)  (pinned {v.get('pinnedAt', '?')})")
+    return 0
+
+
+def main():
+    argv = sys.argv[1:]
+    cmd = "verify"
+    if argv and argv[0] in ("pin", "verify", "list"):
+        cmd = argv.pop(0)
+    return {"pin": cmd_pin, "verify": cmd_verify, "list": cmd_list}[cmd](argv)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

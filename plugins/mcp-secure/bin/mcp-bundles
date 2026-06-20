@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Prints the absolute path to the mcp-secure plugin's bundles directory.
+# Self-locating (resolves symlinks) so it works whether invoked from the plugin
+# cache dir, a ~/.local/bin symlink, or ${CLAUDE_PLUGIN_ROOT}/bin. Used by the
+# /mcp-setup command to find shipped bundles without depending on env vars.
+set -euo pipefail
+src="${BASH_SOURCE[0]}"
+src="$(readlink -f "$src" 2>/dev/null || echo "$src")"
+here="$(cd "$(dirname "$src")" && pwd)"
+bundles="$(cd "$here/../bundles" 2>/dev/null && pwd)" || {
+  echo "mcp-bundles: bundles dir not found near $here" >&2; exit 1; }
+printf '%s\n' "$bundles"

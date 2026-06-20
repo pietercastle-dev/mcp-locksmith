@@ -1,0 +1,12 @@
+# Never commit decrypted secrets or local backend state.
+*.sops.decrypted
+*.decrypted
+.env
+.env.*
+secrets.yaml
+*.key
+keys.txt
+
+# Python
+__pycache__/
+*.pyc

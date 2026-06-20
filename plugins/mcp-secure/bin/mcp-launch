@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+# mcp-launch — generic MCP server launcher that injects secrets at spawn.
+#
+# Replaces per-server wrapper scripts. Claude Code runs this AS the server's
+# command; it resolves each secret *reference* via mcp-secret (never a literal),
+# injects it as an env var and/or CLI flag, then execs the real server. The
+# secret never lands in config and never reaches Claude's context.
+#
+# Usage (in an .mcp.json entry):
+#   command: ${CLAUDE_PLUGIN_ROOT}/bin/mcp-launch   (plugin context)
+#   command: mcp-launch                              (on PATH, e.g. project .mcp.json)
+#   args:    ["--secret","NAME=ref", "--arg","-flag=ref", "--", "real-server","--opt"]
+#
+#   --secret NAME=ref   resolve ref, export as env var NAME (preferred form)
+#   --arg    FLAG=ref   resolve ref, append `FLAG <value>` to the server's argv
+#                       (for servers that only take a secret as a CLI flag)
+#   --                  everything after is the real command + its args
+#
+# `ref` is anything mcp-secret accepts: a short ref or op:// / sops:// / bw://.
+set -euo pipefail
+
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+MCP_SECRET="${MCP_SECRET_BIN:-$HERE/mcp-secret}"
+if [ ! -x "$MCP_SECRET" ]; then
+  # Fall back to PATH if not co-located (e.g. invoked via a bare-name symlink).
+  MCP_SECRET="$(command -v mcp-secret || true)"
+fi
+[ -n "${MCP_SECRET:-}" ] && [ -x "$MCP_SECRET" ] || { echo "mcp-launch: mcp-secret not found" >&2; exit 1; }
+
+usage() { echo "mcp-launch [--secret NAME=ref]... [--arg FLAG=ref]... -- command [args...]" >&2; exit 2; }
+
+secrets_env=()
+arg_injects=()
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --secret)   shift; [ $# -gt 0 ] || usage; secrets_env+=("$1") ;;
+    --secret=*) secrets_env+=("${1#--secret=}") ;;
+    --arg)      shift; [ $# -gt 0 ] || usage; arg_injects+=("$1") ;;
+    --arg=*)    arg_injects+=("${1#--arg=}") ;;
+    --)         shift; break ;;
+    *)          usage ;;
+  esac
+  shift
+done
+[ $# -gt 0 ] || { echo "mcp-launch: no command after --" >&2; exit 2; }
+
+for pair in ${secrets_env+"${secrets_env[@]}"}; do
+  name="${pair%%=*}"; ref="${pair#*=}"
+  [ "$name" != "$pair" ] && [ -n "$name" ] || { echo "mcp-launch: bad --secret '$pair' (need NAME=ref)" >&2; exit 2; }
+  val="$("$MCP_SECRET" "$ref")" || { echo "mcp-launch: failed to resolve secret for $name" >&2; exit 1; }
+  export "$name=$val"
+done
+
+extra=()
+for pair in ${arg_injects+"${arg_injects[@]}"}; do
+  flag="${pair%%=*}"; ref="${pair#*=}"
+  [ "$flag" != "$pair" ] && [ -n "$flag" ] || { echo "mcp-launch: bad --arg '$pair' (need FLAG=ref)" >&2; exit 2; }
+  val="$("$MCP_SECRET" "$ref")" || { echo "mcp-launch: failed to resolve secret for $flag" >&2; exit 1; }
+  extra+=("$flag" "$val")
+done
+
+exec "$@" ${extra+"${extra[@]}"}

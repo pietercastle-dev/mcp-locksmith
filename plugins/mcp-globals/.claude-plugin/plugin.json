@@ -1,0 +1,10 @@
+{
+  "name": "mcp-globals",
+  "displayName": "MCP Globals (template)",
+  "version": "0.1.0",
+  "description": "TEMPLATE: a profile of always-on MCP servers (e.g. Slack at work, or a personal set at home), loaded in every repo when enabled. Copy/rename per profile, fill in .mcp.json, install where it applies.",
+  "author": { "name": "Pete" },
+  "keywords": ["mcp", "global", "profile"],
+  "defaultEnabled": false,
+  "license": "MIT"
+}
