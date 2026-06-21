@@ -33,7 +33,9 @@ into a config without a deliberate, security-first look.
      { "command": "mcp-launch",
        "args": ["--secret","TOKEN=op://Vault/item/field","--","<server>","<args>"] }
      ```
-     Use `--arg FLAG=ref` for servers that only take the secret as a CLI flag.
+     Use `--arg FLAG=ref` only for servers that take the secret *solely* as a CLI
+     flag — prefer `--secret` (env), since an argv value is visible to other local
+     processes (`ps`, `/proc`) while an env var is not.
    - `mcp-launch` resolves the ref at spawn; the config holds only references.
    - The guard hook blocks a literal secret in any `.mcp.json` anyway, but the
      point is to not write one in the first place.

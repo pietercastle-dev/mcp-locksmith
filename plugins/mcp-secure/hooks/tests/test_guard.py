@@ -16,7 +16,18 @@ CASES = [
     ("Bash: add -e literal ghp secret", {"tool_name": "Bash", "tool_input": {"command": f"{A} foo -e GITHUB_TOKEN=ghp_EXAMPLEONLYnotarealtoken00 -- bar"}}, "deny"),
     ("Bash: add -e ${VAR} (safe)",      {"tool_name": "Bash", "tool_input": {"command": f"{A} foo -e API_TOKEN=${{MY_TOKEN}} -- bar"}}, "allow"),
     ("Bash: unrelated",                 {"tool_name": "Bash", "tool_input": {"command": "ls -la"}}, "allow"),
+    # add-json payload — secret in the inline JSON, not an -e flag
+    ("Bash: add-json literal secret",   {"tool_name": "Bash", "tool_input": {"command": f"{A}-json foo '{{\"env\":{{\"TOKEN\":\"ghp_EXAMPLEONLYnotarealtoken00\"}}}}'"}}, "deny"),
+    ("Bash: add-json op:// ref (safe)", {"tool_name": "Bash", "tool_input": {"command": f"{A}-json foo '{{\"env\":{{\"TOKEN\":\"op://Work/s/token\"}}}}'"}}, "allow"),
+    # shell redirect / tee into config — bypasses the Write tool entirely
+    ("Bash: redirect secret to .mcp.json", {"tool_name": "Bash", "tool_input": {"command": "echo '{\"env\":{\"TOKEN\":\"ghp_EXAMPLEONLYnotarealtoken00\"}}' > .mcp.json"}}, "deny"),
+    ("Bash: tee secret to ~/.claude.json", {"tool_name": "Bash", "tool_input": {"command": "echo '{\"key\":\"sk-EXAMPLEONLYnotarealtoken00\"}' | tee ~/.claude.json"}}, "deny"),
+    ("Bash: redirect ref to .mcp.json (safe)", {"tool_name": "Bash", "tool_input": {"command": "echo '{\"env\":{\"TOKEN\":\"op://Work/s/token\"}}' > .mcp.json"}}, "allow"),
+    ("Bash: secret to non-config file",  {"tool_name": "Bash", "tool_input": {"command": "echo ghp_EXAMPLEONLYnotarealtoken00 > notes.txt"}}, "allow"),
     (".mcp.json literal sk- secret",    {"tool_name": "Write", "tool_input": {"file_path": "/x/.mcp.json", "content": '{"env":{"API_KEY":"sk-EXAMPLEONLYnotarealtoken00"}}'}}, "deny"),
+    # secret as a positional CLI arg in the args array, not an env key/value
+    (".mcp.json secret in args array",  {"tool_name": "Write", "tool_input": {"file_path": "/x/.mcp.json", "content": '{"mcpServers":{"s":{"command":"srv","args":["--api-key","sk-EXAMPLEONLYnotarealtoken00"]}}}'}}, "deny"),
+    (".mcp.json ref in args array (safe)", {"tool_name": "Write", "tool_input": {"file_path": "/x/.mcp.json", "content": '{"mcpServers":{"s":{"command":"mcp-launch","args":["--arg","--api-key=op://V/s/token","--","srv"]}}}'}}, "allow"),
     (".mcp.json op:// reference",       {"tool_name": "Write", "tool_input": {"file_path": "/x/.mcp.json", "content": '{"env":{"API_KEY_REF":"op://Work/s/token"}}'}}, "allow"),
     (".mcp.json ${HOME} path val",      {"tool_name": "Write", "tool_input": {"file_path": "/x/.mcp.json", "content": '{"env":{"OAUTH_CREDENTIAL":"${HOME}/.config/x.json"}}'}}, "allow"),
     ("~/.claude.json mcpServers edit",  {"tool_name": "Edit", "tool_input": {"file_path": f"{HOME}/.claude.json", "new_string": '"mcpServers": {"s":{}}'}}, "ask"),

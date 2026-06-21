@@ -11,9 +11,13 @@
 #   command: mcp-launch                              (on PATH, e.g. project .mcp.json)
 #   args:    ["--secret","NAME=ref", "--arg","-flag=ref", "--", "real-server","--opt"]
 #
-#   --secret NAME=ref   resolve ref, export as env var NAME (preferred form)
+#   --secret NAME=ref   resolve ref, export as env var NAME (PREFERRED form)
 #   --arg    FLAG=ref   resolve ref, append `FLAG <value>` to the server's argv
 #                       (for servers that only take a secret as a CLI flag)
+#
+# Prefer --secret over --arg: a value passed in argv is visible to other local
+# processes (`ps`, /proc) for the life of the server, whereas an env var is not
+# listed by `ps`. Only use --arg when the server has no env-var option.
 #   --                  everything after is the real command + its args
 #
 # `ref` is anything mcp-secret accepts: a short ref or op:// / sops:// / bw://.
