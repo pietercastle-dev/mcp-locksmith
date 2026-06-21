@@ -1,8 +1,8 @@
 # mcp-secure
 
-> **New here?** Just install the plugin and run `/mcp-secure:setup` — it sets
-> everything up for you in plain language. This page is the technical reference;
-> see the [top-level README](../../README.md) for the friendly overview.
+> **This page is the technical reference.** If you're just getting started, begin at
+> the **[top-level README](../../README.md)** and run `/mcp-secure:setup` — it installs
+> and configures everything in plain language. Come back here for the design details.
 
 A Claude Code plugin that makes MCP servers **secret-safe by default**: credentials
 are resolved at spawn from your vault, never stored in config, never reach the
@@ -83,9 +83,10 @@ e.g. `printf '{"Authorization":"Bearer %s"}\n' "$(mcp-secret op://Work/x/token)"
    and asks before a global (`-s user`) add.
 
 Commands:
-- `/mcp-secure:add` — add a tool to this repo: a vetted bundle, or a brand-new server it vets first (runs `VETTING.md`).
+- `/mcp-secure:add` — add a tool to this repo: a vetted bundle, or a brand-new server it vets first (runs [`VETTING.md`](VETTING.md)).
 - `/mcp-secure:always-on` — set up an always-on server (team plugin or user scope).
-- `/mcp-secure:check` — health-check the secret chain. `/mcp-secure:verify` — detect tool drift.
+- `/mcp-secure:check` — one health check: the secret chain resolves **and** no tool drifted.
+- `/mcp-secure:verify` — focused drift-only check (the drift half of `check`, on its own).
 
 ## Tool pinning (rug-pull defense)
 
@@ -137,7 +138,12 @@ registries** — it'll break installs that need one. The harness deliberately do
 
 - **At rest:** config holds references and `mcp-launch` invocations — no secrets.
 - **In context:** secrets resolve in a subprocess; values never return to the model.
-  The guard denies literal secrets written into MCP config.
+  The guard denies literal secrets written into MCP config — via `claude mcp add`
+  (`-e` or `add-json`), a shell redirect/tee into `*.mcp.json` / `~/.claude.json`, or
+  a Write/Edit, including secrets tucked in an `args` array.
+- **Guard is defense-in-depth, not a sandbox.** It's a PreToolUse hook that fails
+  *open* (unrecognized input is allowed) and matches the common leak shapes, not
+  every possible one. The real rule stands: never write a literal secret into config.
 - **Scope:** project by default; global is opt-in and confirmed.
 - **Residual risk:** while a server runs, a secret passed as an argv flag (`--arg`)
   is visible in `ps` for that process. Prefer `--secret` (env) where the server

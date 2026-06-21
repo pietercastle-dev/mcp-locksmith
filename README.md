@@ -13,6 +13,16 @@ and simple**:
 - 🛡️ **Automatic guardrails** — blocks secrets from leaking, and warns you if a tool changes after you approved it.
 - 🧰 **Guided setup** — Claude walks you through it; you don't need to be technical.
 
+## Before you start
+
+You need **Claude Code**, plus:
+
+- **To run most tools:** Node.js (`npx`) and/or Python (`uvx`/`pip`) — that's how MCP
+  servers are launched. Many useful tools (like the browser bundle) need nothing else.
+- **Only if a tool needs a key:** one secret vault and its CLI — **1Password** (`op`),
+  **Bitwarden** (`bw`), or **SOPS** (`sops`). Setup will help you pick; skip it
+  entirely for no-key tools.
+
 ## Start here (about 2 minutes)
 
 **1. Install it** — paste these into Claude Code:
@@ -38,8 +48,8 @@ or API key — and setup will guide you if so.
 |---------|--------------|
 | `/mcp-secure:setup` | **Start here** — guided first-time setup |
 | `/mcp-secure:add` | Add a tool to the current project — a ready-made one (e.g. a browser), or a brand-new one it safety-checks first |
-| `/mcp-secure:check` | Check that everything's healthy |
-| `/mcp-secure:verify` | Detect if a tool changed since you approved it |
+| `/mcp-secure:check` | One health check — secrets resolve, and no tool changed since you approved it |
+| `/mcp-secure:verify` | Focused drift-only check (also rolled into `check`) |
 | `/mcp-secure:always-on` | Set up an always-on tool (e.g. Slack everywhere) |
 
 ## How it keeps your keys safe (in one paragraph)
@@ -47,8 +57,28 @@ or API key — and setup will guide you if so.
 You never put a password in a config file. You store it once in a vault you already
 trust — **1Password, Bitwarden, or SOPS** — and mcp-locksmith fetches it only at the
 moment a tool starts up. So the key never lands on disk and never reaches the chat.
-If anything tries to write a raw secret into your config, a built-in guard blocks
-it automatically.
+If anything tries to write a raw secret into your config, a built-in guard catches
+the common ways that happens and blocks it.
+
+## Layers of defense
+
+Safety here isn't one feature — it's a few layers, so a miss in one is caught by
+another:
+
+1. **Add-time vetting** — before a new tool goes in, a security checklist (provenance,
+   pinned version, least privilege, tool-poisoning check). See
+   **[`VETTING.md`](plugins/mcp-secure/VETTING.md)**.
+2. **Install-time firewall** *(optional)* — run a tool's first package fetch under
+   [Socket Firewall](https://github.com/SocketDev/sfw-free) (`sfw`) to block
+   known-malicious packages.
+3. **Deeper scanners** *(optional, on demand)* — e.g. Cisco `mcp-scanner` (local) or
+   Snyk `agent-scan`. Trade-offs in `VETTING.md`.
+4. **Runtime guard** — a hook that blocks literal secrets from being written into
+   config and flags global-scope changes. It's a best-effort safety net (it covers
+   the common leak paths, not every conceivable one), not a sandbox.
+
+Tool **drift detection** runs alongside these: `/mcp-secure:check` warns if an
+approved tool changes its capabilities later (a "rug-pull").
 
 ## For technical users
 
