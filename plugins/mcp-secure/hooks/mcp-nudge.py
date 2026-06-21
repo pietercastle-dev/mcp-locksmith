@@ -3,7 +3,7 @@
 
 Stays silent unless the current project is a git repo with neither a committed
 .mcp.json nor any local (private) MCP servers. When it fires, it injects context
-telling Claude to offer the /mcp-setup bundle picker.
+telling Claude to offer the /mcp-secure:add bundle picker.
 """
 import glob
 import json
@@ -49,8 +49,8 @@ msg = (
     "This git repo has no MCP servers (tools) configured yet. Available bundles: "
     + ", ".join(bundles)
     + ". Briefly let the user know. If they're new to this, suggest /mcp-secure:setup "
-    "for a guided walkthrough. Otherwise: /mcp-secure:mcp-setup adds a ready-made "
-    "bundle to this repo, and /mcp-secure:mcp-add vets and adds a brand-new tool."
+    "for a guided walkthrough. Otherwise /mcp-secure:add adds a tool to this repo — "
+    "a ready-made bundle, or a brand-new one it safety-checks first."
 )
 print(json.dumps({
     "hookSpecificOutput": {

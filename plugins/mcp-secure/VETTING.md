@@ -1,6 +1,6 @@
 # Vetting a new MCP server
 
-Run this before adding any MCP server you haven't used before. `/mcp-add` walks
+Run this before adding any MCP server you haven't used before. `/mcp-secure:add` walks
 you through it; this file is the standard it enforces. The goal: nothing new gets
 into a config without a deliberate, security-first look.
 

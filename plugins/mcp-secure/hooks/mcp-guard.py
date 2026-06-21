@@ -87,7 +87,7 @@ if tool == "Bash":
                 "That's intended only for the curated always-on set (e.g. Slack). For a "
                 "server a single project needs, use -s project instead. Confirm if this "
                 "really belongs everywhere; for a reproducible always-on set, use a "
-                "globals plugin (see /mcp-secure:mcp-global).")
+                "globals plugin (see /mcp-secure:always-on).")
     sys.exit(0)
 
 # ---- Write/Edit/MultiEdit into MCP config files ----

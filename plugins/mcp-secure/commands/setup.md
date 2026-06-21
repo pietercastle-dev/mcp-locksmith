@@ -39,18 +39,19 @@ Then go through these steps, pausing for the user between each:
      reference syntax unless asked.
 
 4. **Add their first tool — show the value.** Offer a ready-made, no-secret tool so
-   they see it work immediately: run `/mcp-secure:mcp-setup` and suggest the
+   they see it work immediately: run `/mcp-secure:add` and suggest the
    `frontend` bundle (a browser/devtools tool). Walk them through approving it on
    restart.
 
-5. **Show the safety net.** Mention two things briefly: `/mcp-secure:mcp-doctor`
+5. **Show the safety net.** Mention two things briefly: `/mcp-secure:check`
    checks everything's healthy (run it now to show green), and a guard
    automatically blocks secrets from leaking into config or chat — they don't have
    to remember to do anything.
 
 6. **Recap in 2–3 plain sentences:** what they have now, how to add more later
-   (`/mcp-secure:mcp-add` for a brand-new tool, `/mcp-secure:mcp-global` for an
-   always-on one like Slack), and where their keys live (their vault, never the
+   (`/mcp-secure:add` for any new tool — ready-made or brand-new,
+   `/mcp-secure:always-on` for an always-on one like Slack), and where their keys
+   live (their vault, never the
    config).
 
 Rules: never print or echo a real secret. Don't overwhelm — offer the next step,

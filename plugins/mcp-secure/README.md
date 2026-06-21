@@ -15,13 +15,13 @@ the common leak vectors.
 |-----------|---------|
 | `bin/mcp-secret` | Resolves a secret *reference* to plaintext from 1Password / SOPS / Bitwarden. |
 | `bin/mcp-launch` | Generic launcher: injects resolved secrets into a server at spawn (env or CLI flag), then execs it. Replaces per-server wrapper scripts. |
-| `bin/mcp-bundles` | Prints the path to the shipped bundles dir (used by `/mcp-setup`). |
+| `bin/mcp-bundles` | Prints the path to the shipped bundles dir (used by `/mcp-secure:add`). |
 | `bin/mcp-doctor` | Health-checks the chain: backend auth + every config reference resolves. |
 | `bin/mcp-pin` | Pins each server's tool definitions and detects drift (rug-pull defense). |
-| `commands/` | `/mcp-secure:mcp-setup`, `:mcp-add` (vetting), `:mcp-global`, `:mcp-doctor`, `:mcp-pin`. |
+| `commands/` | `/mcp-secure:setup`, `:add` (bundle or vetted new server), `:always-on`, `:check`, `:verify`. |
 | `hooks/` | Guard (blocks literal secrets + confirms global scope) + nudge. |
 | `bundles/` | Vetted, ready-to-add server sets (e.g. `frontend`). |
-| `VETTING.md` | The security checklist `/mcp-add` enforces. |
+| `VETTING.md` | The security checklist `/mcp-secure:add` enforces for a brand-new server. |
 
 ## Install
 
@@ -77,15 +77,15 @@ e.g. `printf '{"Authorization":"Bearer %s"}\n' "$(mcp-secret op://Work/x/token)"
 
 ## Adding servers — the priority order
 
-1. **OAuth-capable?** Use it. No static secret. (`/mcp-secure:mcp-add` checks this first.)
+1. **OAuth-capable?** Use it. No static secret. (`/mcp-secure:add` checks this first for a brand-new server.)
 2. **Token-only?** `mcp-launch` + a backend ref.
 3. **Guard hook** is the backstop — it denies literal secrets in any `.mcp.json`
    and asks before a global (`-s user`) add.
 
 Commands:
-- `/mcp-secure:mcp-setup` — add a vetted bundle to this repo.
-- `/mcp-secure:mcp-add` — vet + add a brand-new server (runs `VETTING.md`).
-- `/mcp-secure:mcp-global` — set up an always-on server (team plugin or user scope).
+- `/mcp-secure:add` — add a tool to this repo: a vetted bundle, or a brand-new server it vets first (runs `VETTING.md`).
+- `/mcp-secure:always-on` — set up an always-on server (team plugin or user scope).
+- `/mcp-secure:check` — health-check the secret chain. `/mcp-secure:verify` — detect tool drift.
 
 ## Tool pinning (rug-pull defense)
 
@@ -112,7 +112,7 @@ so it's an on-demand check, not a per-session cost. (stdio only for now.)
 MCP servers usually launch via `npx`/`uvx`, which pull packages at install — a
 supply-chain surface. [Socket Firewall](https://github.com/SocketDev/sfw-free)
 (`sfw`) blocks confirmed-malicious packages, free and tokenless. The harness
-recommends running a new server's first install under it (`/mcp-add` reminds you):
+recommends running a new server's first install under it (`/mcp-secure:add` reminds you):
 
 ```sh
 npm i -g sfw

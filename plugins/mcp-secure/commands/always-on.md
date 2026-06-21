@@ -9,7 +9,7 @@ are for you; explain choices to the user simply.
 
 Help the user set up **always-on tools** — ones that load in *every* project (e.g.
 Slack at work). Reserve it for things genuinely useful everywhere; most tools belong
-to one project via `/mcp-secure:mcp-setup` or `/mcp-secure:mcp-add`.
+to one project via `/mcp-secure:add`.
 
 There are two ways to run a global server. Recommend based on the situation:
 

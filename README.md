@@ -37,11 +37,10 @@ or API key — and setup will guide you if so.
 | Command | What it does |
 |---------|--------------|
 | `/mcp-secure:setup` | **Start here** — guided first-time setup |
-| `/mcp-secure:mcp-setup` | Add a ready-made tool (e.g. a browser) to the current project |
-| `/mcp-secure:mcp-add` | Add and safety-check a brand-new tool |
-| `/mcp-secure:mcp-doctor` | Check that everything's healthy |
-| `/mcp-secure:mcp-pin` | Detect if a tool changed since you approved it |
-| `/mcp-secure:mcp-global` | Set up an always-on tool (e.g. Slack everywhere) |
+| `/mcp-secure:add` | Add a tool to the current project — a ready-made one (e.g. a browser), or a brand-new one it safety-checks first |
+| `/mcp-secure:check` | Check that everything's healthy |
+| `/mcp-secure:verify` | Detect if a tool changed since you approved it |
+| `/mcp-secure:always-on` | Set up an always-on tool (e.g. Slack everywhere) |
 
 ## How it keeps your keys safe (in one paragraph)
 
