@@ -33,10 +33,20 @@ Then go through these steps, pausing for the user between each:
    - **Not now / unsure →** skip vault setup entirely. Reassure them: lots of useful
      tools need no keys, and they can add a vault later by re-running this. Move on.
    - **Yes →** recommend the easiest fit: **1Password** if they already use it (it
-     has a normal app), otherwise **Bitwarden** (free) or **SOPS** (for the
-     command-line comfortable). Help them install the CLI and sign in, then confirm
-     `mcp-doctor` shows the backend authenticated. Keep this minimal — don't explain
-     reference syntax unless asked.
+     has a normal app), otherwise **Bitwarden** (free hosted) or **SOPS+age** (files
+     in git, no SaaS). Then walk them through the secure setup for that one — the
+     canonical steps live in the plugin's **`BACKENDS.md`**; follow it rather than
+     improvising. The essentials:
+     - Install the CLI from the **official source** (`brew install 1password-cli` /
+       `bitwarden-cli` / `sops age`, or the vendor's signed installer) — never a
+       random `curl | sh`.
+     - **1Password:** enable CLI integration in the app, then `op signin`.
+     - **Bitwarden:** `bw login`, then `export BW_SESSION="$(bw unlock --raw)"`.
+     - **SOPS:** `install.sh` offers to generate the age key (`chmod 600`, never
+       committed); then create a `.sops.yaml` with the public key and a
+       `sops`-encrypted secrets file.
+     Confirm with `/mcp-secure:check` (it shows the backend authenticated and that
+     refs resolve). Keep it minimal — don't explain reference syntax unless asked.
 
 4. **Add their first tool — show the value.** Offer a ready-made, no-secret tool so
    they see it work immediately: run `/mcp-secure:add` and suggest the

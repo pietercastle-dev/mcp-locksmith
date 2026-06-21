@@ -22,11 +22,12 @@ the common leak vectors.
 | `hooks/` | Guard (blocks literal secrets + confirms global scope) + nudge. |
 | `bundles/` | Vetted, ready-to-add server sets (e.g. `frontend`). |
 | `VETTING.md` | The security checklist `/mcp-secure:add` enforces for a brand-new server. |
+| `BACKENDS.md` | Secure setup for each secret backend (1Password / Bitwarden / SOPS+age). |
 
 ## Install
 
 ```
-/plugin marketplace add <this-repo>
+/plugin marketplace add pietercastle-dev/mcp-locksmith
 /plugin install mcp-secure@mcp-locksmith
 ```
 
@@ -34,7 +35,7 @@ Then run the one-time machine setup (puts the resolver on PATH + picks your defa
 backend) — needed only if you use secret-backed servers in a repo's `.mcp.json`:
 
 ```
-bash <this-repo>/install.sh
+bash <path-to-cloned-repo>/install.sh
 ```
 
 ## How secrets work
@@ -156,3 +157,7 @@ registries** — it'll break installs that need one. The harness deliberately do
 | 1Password | `op` | `op://vault/item/field` | `op signin` |
 | SOPS+age | `sops` | `sops://file#/key/path` | age key configured |
 | Bitwarden | `bw` (+`jq`) | `bw://item/field` | `bw unlock` + `BW_SESSION` |
+
+Secure, step-by-step setup for each (install from official source, authenticate,
+age-key generation + handling) lives in **[`BACKENDS.md`](BACKENDS.md)**.
+`/mcp-secure:check` reports exactly what's missing and the command to fix it.

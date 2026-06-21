@@ -60,29 +60,44 @@ if os.path.exists(cfg_path):
             cfg[k.strip()] = v.strip()
 backend = cfg.get("MCP_SECRET_BACKEND")
 
+HAVE_BREW = bool(shutil.which("brew"))
+BACKENDS_DOC = "secure setup: plugins/mcp-secure/BACKENDS.md"
+
+def install_hint(*pkgs):
+    if HAVE_BREW:
+        return f"install: brew install {' '.join(pkgs)}"
+    return f"install {', '.join(pkgs)} from the official source — {BACKENDS_DOC}"
+
 head("secret backend")
 if not backend:
     warn(f"no default backend in {cfg_path} (only fully-qualified refs will resolve)")
+    tip(f"pick one (1Password / Bitwarden / SOPS) — {BACKENDS_DOC}")
 else:
     ok(f"default backend: {backend}")
     if backend == "op":
         if not shutil.which("op"):
             bad("op CLI not installed"); fails += 1
+            tip(install_hint("1password-cli")); tip(BACKENDS_DOC)
         elif subprocess.run(["op", "whoami"], capture_output=True).returncode == 0:
             ok("1Password signed in")
         else:
-            bad("1Password not signed in (op signin)"); fails += 1
+            bad("1Password not signed in"); fails += 1
+            tip("sign in: `op signin` (enable CLI integration in the 1Password app first)")
     elif backend == "sops":
         if not shutil.which("sops"):
             bad("sops not installed"); fails += 1
+            tip(install_hint("sops", "age")); tip(BACKENDS_DOC)
         keyfile = os.environ.get("SOPS_AGE_KEY_FILE") or os.path.expanduser("~/.config/sops/age/keys.txt")
         if os.environ.get("SOPS_AGE_KEY") or os.path.exists(keyfile):
             ok("age key present")
         else:
             warn(f"no age key at {keyfile} or $SOPS_AGE_KEY — decryption will fail")
+            tip("generate one: `age-keygen -o ~/.config/sops/age/keys.txt && chmod 600 "
+                "~/.config/sops/age/keys.txt` (or re-run install.sh) — never commit it")
     elif backend == "bw":
         if not shutil.which("bw"):
             bad("bw CLI not installed"); fails += 1
+            tip(install_hint("bitwarden-cli", "jq")); tip(BACKENDS_DOC)
         else:
             r = subprocess.run(["bw", "status"], capture_output=True, text=True)
             try:
@@ -92,9 +107,10 @@ else:
             if st == "unlocked":
                 ok("bitwarden unlocked")
             else:
-                warn(f"bitwarden status: {st or 'unknown'} (bw unlock + export BW_SESSION)")
+                warn(f"bitwarden status: {st or 'unknown'}")
+                tip('unlock: `export BW_SESSION="$(bw unlock --raw)"` in this shell')
         if not shutil.which("jq"):
-            warn("jq not installed (needed for bw refs)")
+            warn("jq not installed (needed for bw refs)"); tip(install_hint("jq"))
 
 
 def refs_from_server(spec):

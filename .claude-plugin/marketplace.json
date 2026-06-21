@@ -1,7 +1,7 @@
 {
   "name": "mcp-locksmith",
   "owner": {
-    "name": "Pete"
+    "name": "pietercastle-dev"
   },
   "metadata": {
     "description": "Secret-safe MCP harness for Claude Code: machinery + a template for team-global servers."

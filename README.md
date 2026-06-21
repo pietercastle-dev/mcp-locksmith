@@ -21,14 +21,15 @@ You need **Claude Code**, plus:
   servers are launched. Many useful tools (like the browser bundle) need nothing else.
 - **Only if a tool needs a key:** one secret vault and its CLI — **1Password** (`op`),
   **Bitwarden** (`bw`), or **SOPS** (`sops`). Setup will help you pick; skip it
-  entirely for no-key tools.
+  entirely for no-key tools. Secure step-by-step for each is in
+  **[`BACKENDS.md`](plugins/mcp-secure/BACKENDS.md)**.
 
 ## Start here (about 2 minutes)
 
 **1. Install it** — paste these into Claude Code:
 
 ```
-/plugin marketplace add <your-github>/mcp-locksmith
+/plugin marketplace add pietercastle-dev/mcp-locksmith
 /plugin install mcp-secure@mcp-locksmith
 ```
 

@@ -62,6 +62,36 @@ else
   info "wrote $CFG (default backend: $default) — edit vault/file as needed"
 fi
 
+# 2b) SOPS path: make sure an age private key exists (the root of trust).
+ACTIVE_BACKEND="$(. "$CFG" 2>/dev/null; echo "${MCP_SECRET_BACKEND:-}")"
+if [ "$ACTIVE_BACKEND" = "sops" ]; then
+  AGE_KEY="${SOPS_AGE_KEY_FILE:-$HOME/.config/sops/age/keys.txt}"
+  if [ -n "${SOPS_AGE_KEY:-}" ] || [ -f "$AGE_KEY" ]; then
+    info "age key present: $AGE_KEY"
+  elif ! command -v age-keygen >/dev/null 2>&1; then
+    warn "SOPS backend selected but 'age' isn't installed — 'brew install sops age' (see plugins/mcp-secure/BACKENDS.md), then re-run."
+  else
+    do_gen=1
+    if [ "$NONINTERACTIVE" -eq 0 ] && [ -r /dev/tty ]; then
+      printf "No age key found. Generate one now at %s? [Y/n]: " "$AGE_KEY"
+      read -r ans </dev/tty || true
+      case "$ans" in [Nn]*) do_gen=0 ;; esac
+    fi
+    if [ "$do_gen" -eq 1 ]; then
+      mkdir -p "$(dirname "$AGE_KEY")"
+      ( umask 077; age-keygen -o "$AGE_KEY" >/dev/null 2>&1 )
+      chmod 600 "$AGE_KEY"
+      info "generated age key (chmod 600): $AGE_KEY"
+      pub="$(age-keygen -y "$AGE_KEY" 2>/dev/null || true)"
+      [ -n "$pub" ] && echo "   public key — use as the recipient in .sops.yaml:"
+      [ -n "$pub" ] && echo "     $pub"
+      warn "NEVER commit $AGE_KEY (the private key). Add it to .gitignore and back it up — lose it and your secrets are unrecoverable."
+    else
+      info "skipped age-key generation — see plugins/mcp-secure/BACKENDS.md when ready."
+    fi
+  fi
+fi
+
 case ":$PATH:" in
   *":$BIN_DIR:"*) ;;
   *) warn "$BIN_DIR is not on your PATH — add it so the resolver is reachable when MCP servers spawn." ;;
@@ -71,6 +101,8 @@ echo
 info "All set on the command-line side."
 echo "   Next, in Claude Code just run:  /mcp-secure:setup"
 echo "   It'll walk you through the rest in plain language."
+echo "   Setting up a secret vault (1Password / Bitwarden / SOPS)? See"
+echo "   plugins/mcp-secure/BACKENDS.md for the secure step-by-step."
 echo
 echo "   (If you haven't installed the plugin yet:"
 echo "      /plugin marketplace add $REPO"

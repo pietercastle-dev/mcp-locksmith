@@ -3,7 +3,7 @@
   "displayName": "MCP Secure",
   "version": "0.1.0",
   "description": "Safely add tools (MCP servers) to Claude — keeps your API keys out of config and out of the chat, safety-checks new tools, and flags ones that change. Run /mcp-secure:setup to start.",
-  "author": { "name": "Pete" },
+  "author": { "name": "pietercastle-dev" },
   "keywords": ["mcp", "secrets", "security", "1password", "sops", "bitwarden"],
   "license": "MIT"
 }
