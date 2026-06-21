@@ -2,7 +2,7 @@
   "name": "mcp-secure",
   "displayName": "MCP Secure",
   "version": "0.1.0",
-  "description": "Secret-safe MCP harness: resolver-backed secret injection, a vetting flow for new servers, and guard hooks that keep credentials out of config and out of model context.",
+  "description": "Safely add tools (MCP servers) to Claude — keeps your API keys out of config and out of the chat, safety-checks new tools, and flags ones that change. Run /mcp-secure:setup to start.",
   "author": { "name": "Pete" },
   "keywords": ["mcp", "secrets", "security", "1password", "sops", "bitwarden"],
   "license": "MIT"

@@ -1,5 +1,9 @@
 # mcp-secure
 
+> **New here?** Just install the plugin and run `/mcp-secure:setup` — it sets
+> everything up for you in plain language. This page is the technical reference;
+> see the [top-level README](../../README.md) for the friendly overview.
+
 A Claude Code plugin that makes MCP servers **secret-safe by default**: credentials
 are resolved at spawn from your vault, never stored in config, never reach the
 model's context. It adds a vetting flow for new servers and guard hooks that stop

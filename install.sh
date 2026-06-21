@@ -68,6 +68,10 @@ case ":$PATH:" in
 esac
 
 echo
-info "Done. If you haven't yet, install the plugin:"
-echo "   /plugin marketplace add $REPO"
-echo "   /plugin install mcp-secure@mcp-locksmith"
+info "All set on the command-line side."
+echo "   Next, in Claude Code just run:  /mcp-secure:setup"
+echo "   It'll walk you through the rest in plain language."
+echo
+echo "   (If you haven't installed the plugin yet:"
+echo "      /plugin marketplace add $REPO"
+echo "      /plugin install mcp-secure@mcp-locksmith )"

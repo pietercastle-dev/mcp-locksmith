@@ -46,11 +46,11 @@ if not bundles:
     sys.exit(0)
 
 msg = (
-    "This git repo has no MCP servers configured yet. Available bundles: "
+    "This git repo has no MCP servers (tools) configured yet. Available bundles: "
     + ", ".join(bundles)
-    + ". Briefly let the user know, and if they want any, run /mcp-secure:mcp-setup "
-    "to pick and install them into this repo's .mcp.json. To add a brand new "
-    "(un-vetted) server, use /mcp-secure:mcp-add, which runs the security vetting flow."
+    + ". Briefly let the user know. If they're new to this, suggest /mcp-secure:setup "
+    "for a guided walkthrough. Otherwise: /mcp-secure:mcp-setup adds a ready-made "
+    "bundle to this repo, and /mcp-secure:mcp-add vets and adds a brand-new tool."
 )
 print(json.dumps({
     "hookSpecificOutput": {
