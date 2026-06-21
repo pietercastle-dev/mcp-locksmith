@@ -2,9 +2,14 @@
 description: Set up always-on (global) MCP servers that load in every repo
 ---
 
-Help the user manage the **global tier** — MCP servers that load in *every* repo
-(e.g. Slack at work). Reserve it for genuinely cross-context servers; most belong
-in a project bundle (`/mcp-secure:mcp-setup`) or a single repo (`/mcp-secure:mcp-add`).
+**How to talk to the user:** plain, friendly language (same tone as
+`/mcp-secure:setup`). Frame this as "always-on tools" — ones available in every
+project automatically (like Slack), rather than per-project. The mechanics below
+are for you; explain choices to the user simply.
+
+Help the user set up **always-on tools** — ones that load in *every* project (e.g.
+Slack at work). Reserve it for things genuinely useful everywhere; most tools belong
+to one project via `/mcp-secure:mcp-setup` or `/mcp-secure:mcp-add`.
 
 There are two ways to run a global server. Recommend based on the situation:
 

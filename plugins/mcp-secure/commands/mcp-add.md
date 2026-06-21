@@ -2,8 +2,14 @@
 description: Vet and add a new MCP server to this repo (security-first)
 ---
 
-Add a **new** MCP server to the current repo's `.mcp.json`, following the security
-vetting checklist in the mcp-secure plugin's `VETTING.md` (read it: `cat "$(dirname "$(command -v mcp-bundles)")/../VETTING.md"` or find it in the plugin root). Do not skip steps — the point of this command is that vetting is a step, not a vibe.
+**How to talk to the user:** plain, friendly language (same tone as
+`/mcp-secure:setup`) — say "tool" rather than "MCP server", and explain the safety
+check in everyday terms ("let me quickly check this tool is safe before we add it").
+Don't read the checklist aloud or dump research at them; do the work yourself and
+report findings plainly. Match their technical level.
+
+Add a **new** tool to the current project's config (`.mcp.json`), following the
+security vetting checklist in the plugin's `VETTING.md` (read it: `cat "$(dirname "$(command -v mcp-bundles)")/../VETTING.md"` or find it in the plugin root). Do not skip the checks — the point of this command is that vetting is a step, not a vibe.
 
 The server to add is in `$ARGUMENTS` (a name, package, or URL). If empty, ask what they want.
 
@@ -24,7 +30,7 @@ Work through the checklist, doing real research — don't assume:
      "args": ["--secret", "TOKEN=op://Vault/item/field", "--", "<server>", "<args>"] }
    ```
    Use `--arg FLAG=ref` instead for servers that only take the secret as a CLI flag. Tell the user to store the secret in their backend, scoped to least privilege, and that `mcp-launch` must be on PATH (the marketplace `install.sh` handles that).
-7. **Present findings** — vetting summary + the proposed `.mcp.json` entry — and get explicit approval before writing.
+7. **Present findings plainly** — a short, everyday-language summary (who makes it, is it trustworthy, what it can do, does it need a key) plus what you're about to add — and get explicit approval before writing.
 8. **Write** — merge into the **current repo's** `.mcp.json` at project scope only. Never `~/.claude.json`, never user scope. Then tell the user to restart the session to approve it.
 
 9. **Pin it** — after the server is approved and reachable, run `mcp-pin pin <name>` to record its tool baseline. This is the rug-pull defense: a later `mcp-pin verify` will flag if the server changes its tools after approval.

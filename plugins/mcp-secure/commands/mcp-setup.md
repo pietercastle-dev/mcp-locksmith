@@ -2,15 +2,20 @@
 description: Add MCP server bundle(s) to the current repo's .mcp.json
 ---
 
-Add one or more MCP **bundles** to **this repo's** `.mcp.json`. Bundles are vetted
-sets of MCP servers that ship with the `mcp-secure` plugin.
+**How to talk to the user:** plain, friendly language (same tone as
+`/mcp-secure:setup`) — say "tool" rather than "MCP server", explain the *why* in
+everyday terms, don't paste raw output or jargon without translating it, and match
+their technical level. The numbered steps below are for you, not the user.
+
+Add one or more ready-made **tools** (vetted bundles that ship with the plugin) to
+**this project's** config (`.mcp.json`).
 
 Steps:
 
 1. Find the bundles directory by running `mcp-bundles` (a helper on PATH that prints the path), then list it: `ls "$(mcp-bundles)"/*.json`. Read each bundle. Ignore any `_comment` key — it's documentation.
 2. **Validate** each bundle before offering it: valid JSON shaped `{ "mcpServers": { ... } }`. If a bundle contains a literal secret (an `env`/`args` value that isn't a `${VAR}`, an `op://`/`sops://`/`bw://` ref, or an `mcp-launch --secret/--arg` ref), warn — bundles must resolve secrets via `mcp-launch`, never inline them.
 3. Read the current repo's `.mcp.json` if present (repo root / `$CLAUDE_PROJECT_DIR`). Note which servers already exist.
-4. Use **AskUserQuestion** (multiSelect) so the user picks which bundle(s) to add. For each, list its servers and mark any already present.
+4. Use **AskUserQuestion** (multiSelect) so the user picks which tool(s) to add. For each option, describe in plain terms what it gives them (e.g. "a web browser Claude can drive"), and mark any already added.
 5. Merge the chosen bundles' `mcpServers` into the repo's `.mcp.json` (drop `_comment`):
    - Create the file if missing, shaped `{ "mcpServers": { ... } }`.
    - Preserve existing servers; don't overwrite one without confirming.
