@@ -4,6 +4,25 @@ All notable changes to mcp-locksmith are documented here. This project adheres t
 [Semantic Versioning](https://semver.org/). Plugin versions are tracked in each
 plugin's `.claude-plugin/plugin.json`.
 
+## [Unreleased]
+
+### Security
+- **No more sourcing the secret-backend config.** `mcp-secret` and `install.sh` now
+  parse `~/.config/mcp-secret/config` as `KEY=VALUE` instead of `source`-ing it,
+  removing a code-execution path if that file were ever attacker-writable. The
+  config file is created `chmod 600` and its dir `700`.
+- **age-key hardening.** `install.sh` creates the key dir `700` and tightens perms
+  (`600`) on a pre-existing key, not just freshly generated ones.
+- **Guard covers more credential shapes** — Google API keys (`AIza…`), PEM private
+  keys, and connection strings / URLs with inline credentials (`scheme://user:pass@`).
+  Deliberately not matching bare hex (git SHAs / content hashes are not secrets).
+- **Guard scans structurally.** Write/Edit payloads that are valid JSON are walked as
+  JSON (catching secrets in `args` arrays and behind escaped quotes) instead of
+  regex-matched. `claude mcp import` is now gated alongside `add`.
+
+### Added
+- `SECURITY.md` — threat model, non-goals, and plugin pinning/update guidance.
+
 ## [0.1.0] — 2026-06-23
 
 Initial release. A Claude Code plugin marketplace for adding MCP servers (tools)

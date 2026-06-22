@@ -52,7 +52,12 @@ SECRET_KEY = re.compile(
 SECRET_VAL = re.compile(
     r"(ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|"
     r"xox[baprs]-[A-Za-z0-9-]{10,}|sk-[A-Za-z0-9]{20,}|"
-    r"AKIA[0-9A-Z]{16}|eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,})")
+    r"AKIA[0-9A-Z]{16}|eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}|"
+    r"AIza[0-9A-Za-z_\-]{30,}|"                              # Google API key
+    r"-----BEGIN[ A-Z]*PRIVATE KEY-----|"                   # PEM private key
+    r"[a-z][a-z0-9+.\-]*://[^/?#@\s:]+:[^/?#@\s]+@)")        # creds in a URL/DSN
+# NOTE: deliberately NOT matching bare high-entropy hex — git SHAs and content
+# hashes legitimately appear in configs and would be false positives.
 # Forms that are SAFE: env expansion, a bare $VAR, or an mcp-secret reference.
 SAFE_VAL = re.compile(r"^\s*(\$\{[^}]+\}|\$[A-Za-z_]\w*|op://|sops://|bw://)")
 # Basenames that identify an MCP config file written via the shell.
@@ -95,6 +100,30 @@ def find_secret(blob):
     return None
 
 
+def scan_json(obj, key=None):
+    """Walk a parsed JSON value; return a label for the first secret, or None.
+
+    Structural (not regex), so it sees secrets in `args` arrays and nested objects,
+    and isn't fooled by escaped quotes / whitespace the way a flat `"k":"v"` regex is.
+    """
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            r = scan_json(v, k)
+            if r:
+                return r
+    elif isinstance(obj, list):
+        for v in obj:
+            r = scan_json(v, key)
+            if r:
+                return r
+    elif isinstance(obj, str):
+        if SECRET_VAL.search(obj):
+            return "a credential-shaped value"
+        if looks_secret(key, obj):
+            return f"'{key}'"
+    return None
+
+
 def writes_mcp_config(cmd):
     """True if the Bash command redirects/tees into an MCP config file."""
     for tgt in re.findall(r'(?:>>?|\btee\b(?:\s+-a)?)\s+"?([^\s"\';|&)]+)', cmd):
@@ -107,7 +136,9 @@ def writes_mcp_config(cmd):
 if tool == "Bash":
     cmd = ti.get("command", "")
     is_add = bool(re.search(r"\bclaude\b.+?\bmcp\b.+?\badd\b", cmd, re.S))
-    if is_add or writes_mcp_config(cmd):
+    # `import` ingests an external config file/stream into MCP config too.
+    is_import = bool(re.search(r"\bclaude\b.+?\bmcp\b.+?\bimport\b", cmd, re.S))
+    if is_add or is_import or writes_mcp_config(cmd):
         # Explicit `-e/--env NAME=literal` — catches custom-named secrets that
         # aren't a recognizable token shape.
         for m in re.finditer(
@@ -153,7 +184,13 @@ if tool in ("Write", "Edit", "MultiEdit"):
             chunks.append(e["new_string"])
     blob = "\n".join(chunks)
 
-    what = find_secret(blob)
+    # Prefer a structural scan: if the written blob is valid JSON (a full Write),
+    # walk it so escaped quotes and args-array secrets can't hide. Fragments (most
+    # Edits) aren't valid JSON on their own — fall back to the text scan.
+    try:
+        what = scan_json(json.loads(blob))
+    except Exception:
+        what = find_secret(blob)
     if what:
         out("deny", f"Blocked: {what} looks like a literal secret in {base}. " + WRAPPER_HINT)
 

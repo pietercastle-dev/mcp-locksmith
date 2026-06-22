@@ -8,6 +8,7 @@ import sys
 GUARD = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "mcp-guard.py")
 HOME = os.path.expanduser("~")
 A = "claude " + "mcp " + "add"  # avoid the literal trigger phrase in this file
+IMP = "claude " + "mcp " + "import"
 
 CASES = [
     ("Bash: add -s user (global)",      {"tool_name": "Bash", "tool_input": {"command": f"{A} -s user foo -- bar"}}, "ask"),
@@ -32,6 +33,17 @@ CASES = [
     (".mcp.json ${HOME} path val",      {"tool_name": "Write", "tool_input": {"file_path": "/x/.mcp.json", "content": '{"env":{"OAUTH_CREDENTIAL":"${HOME}/.config/x.json"}}'}}, "allow"),
     ("~/.claude.json mcpServers edit",  {"tool_name": "Edit", "tool_input": {"file_path": f"{HOME}/.claude.json", "new_string": '"mcpServers": {"s":{}}'}}, "ask"),
     ("unrelated file w/ secret-ish",    {"tool_name": "Write", "tool_input": {"file_path": "/x/foo.txt", "content": "API_KEY=sk-EXAMPLEONLYnotarealtoken00"}}, "allow"),
+    # newly-covered credential shapes
+    (".mcp.json Google AIza key",       {"tool_name": "Write", "tool_input": {"file_path": "/x/.mcp.json", "content": '{"env":{"G":"AIzaSyB1234567890abcdefghijklmnopqrstuv"}}'}}, "deny"),
+    (".mcp.json DB connection string",  {"tool_name": "Write", "tool_input": {"file_path": "/x/.mcp.json", "content": '{"env":{"DATABASE_URL":"postgres://user:hunter2pass@db.host:5432/app"}}'}}, "deny"),
+    (".mcp.json PEM private key",       {"tool_name": "Write", "tool_input": {"file_path": "/x/.mcp.json", "content": '{"env":{"KEYDATA":"-----BEGIN OPENSSH PRIVATE KEY-----\\nabc"}}'}}, "deny"),
+    # false-positive regressions: these must NOT be flagged
+    (".mcp.json git SHA (not secret)",  {"tool_name": "Write", "tool_input": {"file_path": "/x/.mcp.json", "content": '{"env":{"COMMIT":"a3f1c9e8b2d4f6a8c1e3b5d7f9a1c3e5b7d9f1a3"}}'}}, "allow"),
+    (".mcp.json plain https URL",       {"tool_name": "Write", "tool_input": {"file_path": "/x/.mcp.json", "content": '{"env":{"ENDPOINT":"https://api.example.com/v1"}}'}}, "allow"),
+    # escaped-quote value that the flat regex would have truncated — json walk catches it
+    (".mcp.json escaped-quote secret",  {"tool_name": "Write", "tool_input": {"file_path": "/x/.mcp.json", "content": '{"env":{"X":"ab\\"cd ghp_EXAMPLEONLYnotarealtoken00"}}'}}, "deny"),
+    # `claude mcp import` with an inline secret (process substitution)
+    ("Bash: mcp import inline secret",  {"tool_name": "Bash", "tool_input": {"command": IMP + " <(printf '{\"x\":\"ghp_EXAMPLEONLYnotarealtoken00\"}')"}}, "deny"),
 ]
 
 

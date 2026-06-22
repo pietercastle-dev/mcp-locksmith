@@ -19,6 +19,8 @@ You need **Claude Code**, plus:
 
 - **To run most tools:** Node.js (`npx`) and/or Python (`uvx`/`pip`) — that's how MCP
   servers are launched. Many useful tools (like the browser bundle) need nothing else.
+  (`python3` is also what runs the secret-leak guard hook — without it, that guard
+  silently won't run.)
 - **Only if a tool needs a key:** one secret vault and its CLI — **1Password** (`op`),
   **Bitwarden** (`bw`), or **SOPS** (`sops`). Setup will help you pick; skip it
   entirely for no-key tools. Secure step-by-step for each is in
@@ -104,10 +106,16 @@ plugins/mcp-globals/              # template for always-on tools
 install.sh                        # one-time: puts the helpers on PATH + saves your vault choice
 ```
 
-## Releases
+## Releases, trust & updates
 
 Versioned releases are tagged (`v0.1.0`, …). See **[CHANGELOG.md](CHANGELOG.md)**.
-Pin to a tag if you want a stable version rather than tracking `main`.
+
+Installing this plugin lets its code run as a hook and resolve your vault secrets, so
+treat updates as a trust decision: **pin to a tagged release** rather than tracking
+`main`, and review changes (especially under `hooks/` and `bin/`) before updating.
+`install.sh` symlinks the helpers, so a `git pull` swaps in new code immediately —
+checking out a tag pins the executed code too. Full threat model, non-goals, pinning
+steps, and how to report a vulnerability are in **[SECURITY.md](SECURITY.md)**.
 
 ## License
 

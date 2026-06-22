@@ -24,6 +24,7 @@ info() { printf '\033[1;34m==>\033[0m %s\n' "$*"; }
 warn() { printf '\033[1;33mwarn:\033[0m %s\n' "$*" >&2; }
 
 mkdir -p "$BIN_DIR" "$CFG_DIR"
+chmod 700 "$CFG_DIR"   # the config names your vault/file — keep it owner-only
 
 # 1) Resolver + launcher on PATH (symlinked so `git pull` propagates).
 for b in mcp-secret mcp-launch mcp-bundles mcp-doctor mcp-pin; do
@@ -61,12 +62,18 @@ else
   } > "$CFG"
   info "wrote $CFG (default backend: $default) — edit vault/file as needed"
 fi
+[ -f "$CFG" ] && chmod 600 "$CFG"
 
 # 2b) SOPS path: make sure an age private key exists (the root of trust).
-ACTIVE_BACKEND="$(. "$CFG" 2>/dev/null; echo "${MCP_SECRET_BACKEND:-}")"
+# Read the backend by PARSING the config (grep), never by sourcing it.
+ACTIVE_BACKEND="$(grep -E '^[[:space:]]*MCP_SECRET_BACKEND[[:space:]]*=' "$CFG" 2>/dev/null | tail -1 | cut -d= -f2- | tr -d '[:space:]')"
 if [ "$ACTIVE_BACKEND" = "sops" ]; then
   AGE_KEY="${SOPS_AGE_KEY_FILE:-$HOME/.config/sops/age/keys.txt}"
   if [ -n "${SOPS_AGE_KEY:-}" ] || [ -f "$AGE_KEY" ]; then
+    if [ -f "$AGE_KEY" ]; then          # tighten perms even on a pre-existing key
+      chmod 700 "$(dirname "$AGE_KEY")" 2>/dev/null || true
+      chmod 600 "$AGE_KEY" 2>/dev/null || true
+    fi
     info "age key present: $AGE_KEY"
   elif ! command -v age-keygen >/dev/null 2>&1; then
     warn "SOPS backend selected but 'age' isn't installed — 'brew install sops age' (see plugins/mcp-secure/BACKENDS.md), then re-run."
@@ -78,7 +85,7 @@ if [ "$ACTIVE_BACKEND" = "sops" ]; then
       case "$ans" in [Nn]*) do_gen=0 ;; esac
     fi
     if [ "$do_gen" -eq 1 ]; then
-      mkdir -p "$(dirname "$AGE_KEY")"
+      mkdir -p -m 700 "$(dirname "$AGE_KEY")"
       ( umask 077; age-keygen -o "$AGE_KEY" >/dev/null 2>&1 )
       chmod 600 "$AGE_KEY"
       info "generated age key (chmod 600): $AGE_KEY"

@@ -150,6 +150,9 @@ registries** — it'll break installs that need one. The harness deliberately do
   is visible in `ps` for that process. Prefer `--secret` (env) where the server
   supports it. Local-process exposure only — never on disk, never in context.
 
+Full threat model, non-goals, and how to pin/update the plugin safely:
+**[../../SECURITY.md](../../SECURITY.md)**.
+
 ## Backends
 
 | Backend | CLI | Reference | Notes |
