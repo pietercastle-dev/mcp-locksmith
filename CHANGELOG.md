@@ -19,6 +19,8 @@ plugin's `.claude-plugin/plugin.json`.
 - **Guard scans structurally.** Write/Edit payloads that are valid JSON are walked as
   JSON (catching secrets in `args` arrays and behind escaped quotes) instead of
   regex-matched. `claude mcp import` is now gated alongside `add`.
+- **Path-traversal reject.** `sops://` references containing `..` are refused, so an
+  untrusted config can't traverse to read other files on disk.
 
 ### Added
 - `SECURITY.md` — threat model, non-goals, and plugin pinning/update guidance.
