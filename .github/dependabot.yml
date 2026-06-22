@@ -1,0 +1,15 @@
+version: 2
+updates:
+  # Keep the SHA-pinned GitHub Actions patched (bumps the SHA + the version
+  # comment together). Scoped to github-actions ONLY on purpose: the pinned
+  # MCP server versions in bundles/*.json must stay manual, because VETTING.md
+  # requires a human re-vet on every server version bump.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: ci

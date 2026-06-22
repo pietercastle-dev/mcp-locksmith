@@ -24,6 +24,8 @@ plugin's `.claude-plugin/plugin.json`.
 
 - **CI supply chain.** GitHub Actions are pinned to commit SHAs (not mutable `@v4`
   tags), and the workflow token is scoped to `contents: read` (least privilege).
+  Dependabot keeps the pinned Actions patched (scoped to `github-actions` only, so
+  vetted MCP server versions in bundles stay manually re-vetted).
 
 ### Added
 - `SECURITY.md` — threat model, non-goals, and plugin pinning/update guidance.
