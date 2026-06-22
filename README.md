@@ -104,6 +104,11 @@ plugins/mcp-globals/              # template for always-on tools
 install.sh                        # one-time: puts the helpers on PATH + saves your vault choice
 ```
 
+## Releases
+
+Versioned releases are tagged (`v0.1.0`, …). See **[CHANGELOG.md](CHANGELOG.md)**.
+Pin to a tag if you want a stable version rather than tracking `main`.
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
