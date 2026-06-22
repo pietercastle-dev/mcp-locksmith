@@ -22,6 +22,9 @@ plugin's `.claude-plugin/plugin.json`.
 - **Path-traversal reject.** `sops://` references containing `..` are refused, so an
   untrusted config can't traverse to read other files on disk.
 
+- **CI supply chain.** GitHub Actions are pinned to commit SHAs (not mutable `@v4`
+  tags), and the workflow token is scoped to `contents: read` (least privilege).
+
 ### Added
 - `SECURITY.md` — threat model, non-goals, and plugin pinning/update guidance.
 
