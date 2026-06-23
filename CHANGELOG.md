@@ -28,6 +28,14 @@ plugin's `.claude-plugin/plugin.json`.
   vetted MCP server versions in bundles stay manually re-vetted).
 
 ### Added
+- **No-typing UX via skills.** New `add-tool` / `remove-tool` / `audit-tools` skills
+  auto-trigger the corresponding flow from plain-language requests ("add a Slack tool",
+  "remove the GitHub server", "are my tool keys safe?") — the user no longer has to type
+  a slash command. Skills route to the canonical command flow (single source of truth).
+  A CLAUDE.md routing directive reinforces the same default behavior.
+- **Proactive adoption nudge.** The SessionStart hook now also fires (once per project)
+  when existing servers aren't adopted — a literal secret in config, or unpinned — and
+  offers `/mcp-secure:audit`. Fast (local reads only) and marker-gated so it doesn't nag.
 - **`/mcp-secure:audit`** — review **already-installed** servers (installing the plugin
   doesn't touch them) and adopt them into the harness: migrate inline secrets to
   references, pin versions/baselines, flag `http://`. Scoped as config hygiene, not a

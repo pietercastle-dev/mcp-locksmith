@@ -19,6 +19,7 @@ the common leak vectors.
 | `bin/mcp-doctor` | Health-checks the chain: backend auth + every config reference resolves. |
 | `bin/mcp-pin` | Pins each server's tool definitions and detects drift (rug-pull defense). |
 | `commands/` | `/mcp-secure:setup`, `:add` (bundle or vetted new server), `:remove`, `:audit`, `:always-on`, `:check`, `:verify`. |
+| `skills/` | `add-tool`, `remove-tool`, `audit-tools` — auto-trigger the flows above from plain-language requests (no slash command needed); they route to the matching command. |
 | `hooks/` | Guard (blocks literal secrets + confirms global scope) + nudge. |
 | `bundles/` | Vetted, ready-to-add server sets (e.g. `frontend`). |
 | `VETTING.md` | The security checklist `/mcp-secure:add` enforces for a brand-new server. |

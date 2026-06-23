@@ -25,3 +25,13 @@ but confirmed.
 **Adding a server:** default to project scope. Use `-s user` only for the curated
 always-on set (the guard will ask you to confirm). Route any secret through
 `mcp-launch` — never `-e TOKEN=<literal>`.
+
+**Plain-language requests route through the safe flow.** When the user asks (in their
+own words) to add/connect/install, remove/disconnect, or review an external tool or
+MCP server — e.g. "add a Slack tool", "remove the GitHub server", "are my tool keys
+safe?" — handle it via the mcp-secure flow, not ad hoc. The mcp-secure plugin ships
+skills (`add-tool`, `remove-tool`, `audit-tools`) that trigger on these intents; let
+them. If they don't fire: vet a new server (provenance, pin the version, least
+privilege — see VETTING.md), keep any secret in the backend and launch via `mcp-launch`
+with a reference, offer to pin the baseline, and on removal prompt to revoke the token.
+The user should not need to type a slash command.

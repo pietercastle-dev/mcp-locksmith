@@ -47,6 +47,10 @@ or API key — and setup will guide you if so.
 
 ## What you can do
 
+You usually **don't need to type these** — just ask in plain language ("add a Slack
+tool", "remove the GitHub server", "are my tool keys safe?") and the matching flow runs
+automatically. The slash commands below are the explicit form if you want them.
+
 | Command | What it does |
 |---------|--------------|
 | `/mcp-secure:setup` | **Start here** — guided first-time setup |
