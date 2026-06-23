@@ -6,6 +6,14 @@ plugin's `.claude-plugin/plugin.json`.
 
 ## [Unreleased]
 
+### Fixed
+- **SOPS backend on macOS.** `sops`' default age-key location is platform-specific
+  (`~/Library/Application Support/…` on macOS), so it never found the key `install.sh`
+  writes to `~/.config/sops/age/keys.txt` — every SOPS secret failed to resolve while
+  `mcp-doctor` misleadingly reported the key "present". `mcp-secret` now exports
+  `SOPS_AGE_KEY_FILE` pointing at the managed key when the user hasn't set one. Found by
+  an end-to-end dogfood (resolve a real secret through the full chain).
+
 _Planned: org-level config (v0.2) — an optional `org.json` letting a company point
 employees at internal MCP patterns/docs and a default gateway. See [ROADMAP.md](ROADMAP.md)._
 
