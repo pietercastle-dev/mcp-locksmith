@@ -19,6 +19,8 @@ Usage:
   mcp-pin verify [name…]
   mcp-pin pin [name…]     record/update the baseline (after vetting)
   mcp-pin list            show what's pinned
+  mcp-pin unpin <name…>   drop the baseline for a server you removed
+  mcp-pin prune [--yes]   drop pins with no matching server here (dry-run w/o --yes)
 
 stdio servers only for now; http/sse are skipped with a note. Exit non-zero if
 any server drifts from its pin or fails to verify.
@@ -261,12 +263,56 @@ def cmd_list(_names):
     return 0
 
 
+def cmd_unpin(names):
+    names = [n for n in names if not n.startswith("-")]
+    if not names:
+        warn("usage: mcp-pin unpin <name> [name…]"); return 2
+    pins = load_pins()
+    head("unpinning")
+    removed = 0
+    for key in list(pins):
+        if pins[key].get("name") in names:
+            ok(f"{pins[key].get('name')}: pin removed")
+            del pins[key]; removed += 1
+    if not removed:
+        warn(f"no pins matched: {', '.join(names)}"); return 0
+    save_pins(pins)
+    return 0
+
+
+def cmd_prune(names):
+    apply = any(a in ("--yes", "-y") for a in names)
+    pins = load_pins()
+    live = set()
+    for n, s in discover().items():
+        cmd = expand(s.get("command", "")); args = [expand(a) for a in (s.get("args") or [])]
+        live.add(identity(n, cmd, args))
+    orphans = {k: v for k, v in pins.items() if k not in live}
+    head("prune")
+    if not orphans:
+        info("no orphaned pins for this context"); return 0
+    warn("discovery is relative to the CURRENT dir (./.mcp.json) + ~/.claude.json — "
+         "a pin below may belong to ANOTHER repo you're simply not in right now.")
+    for v in sorted(orphans.values(), key=lambda x: x.get("name", "")):
+        print(f"    {v.get('name')}  (pinned {v.get('pinnedAt', '?')})")
+    if not apply:
+        info(f"{len(orphans)} orphaned pin(s) — re-run `mcp-pin prune --yes` to remove all, "
+             "or `mcp-pin unpin <name>` for specific ones")
+        return 0
+    for k in orphans:
+        del pins[k]
+    save_pins(pins)
+    ok(f"removed {len(orphans)} orphaned pin(s)")
+    return 0
+
+
 def main():
     argv = sys.argv[1:]
     cmd = "verify"
-    if argv and argv[0] in ("pin", "verify", "list"):
+    if argv and argv[0] in ("pin", "verify", "list", "unpin", "prune"):
         cmd = argv.pop(0)
-    return {"pin": cmd_pin, "verify": cmd_verify, "list": cmd_list}[cmd](argv)
+    return {"pin": cmd_pin, "verify": cmd_verify, "list": cmd_list,
+            "unpin": cmd_unpin, "prune": cmd_prune}[cmd](argv)
 
 
 if __name__ == "__main__":

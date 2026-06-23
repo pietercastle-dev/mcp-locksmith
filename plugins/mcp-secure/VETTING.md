@@ -85,6 +85,18 @@ rest:
   - Beware the name "mcp-guard" — there are two unrelated projects (a community
     static scanner and a runtime injection guard); prefer the two above.
 
+## Removing a server (the other end of the lifecycle)
+
+Taking a tool out is a security step, not just cleanup — a token for a tool nobody
+uses is a forgotten credential waiting to leak. `/mcp-secure:remove` walks it:
+
+1. **Unregister** it from the scope it lives in (project `.mcp.json` or user scope).
+2. **Revoke / rotate the token** at the provider, and delete the now-unused item from
+   your vault — *only if no other tool still references it*. This is the part people
+   forget; it's the whole reason to have a remove flow.
+3. **Drop its pin** — `mcp-pin unpin <name>` (or `mcp-pin prune`) so drift checks stop
+   tracking a tool that's gone.
+
 ## Why this exists
 
 The two failure modes this prevents: (a) a credential getting baked into

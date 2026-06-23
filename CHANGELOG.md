@@ -28,6 +28,11 @@ plugin's `.claude-plugin/plugin.json`.
   vetted MCP server versions in bundles stay manually re-vetted).
 
 ### Added
+- **`/mcp-secure:remove`** — a guided removal flow that closes the tool lifecycle:
+  unregister the server from its scope, `mcp-pin unpin` its baseline, and prompt to
+  **revoke/rotate its secret** so a removed tool never leaves a live orphaned key.
+- **`mcp-pin unpin <name…>` / `mcp-pin prune`** — drop the pin for a removed server
+  (prune is dry-run unless `--yes`, since pin discovery is per-directory).
 - `SECURITY.md` — threat model, non-goals, and plugin pinning/update guidance.
 
 ## [0.1.0] — 2026-06-23

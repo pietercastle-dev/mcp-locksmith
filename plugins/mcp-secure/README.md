@@ -18,7 +18,7 @@ the common leak vectors.
 | `bin/mcp-bundles` | Prints the path to the shipped bundles dir (used by `/mcp-secure:add`). |
 | `bin/mcp-doctor` | Health-checks the chain: backend auth + every config reference resolves. |
 | `bin/mcp-pin` | Pins each server's tool definitions and detects drift (rug-pull defense). |
-| `commands/` | `/mcp-secure:setup`, `:add` (bundle or vetted new server), `:always-on`, `:check`, `:verify`. |
+| `commands/` | `/mcp-secure:setup`, `:add` (bundle or vetted new server), `:remove`, `:always-on`, `:check`, `:verify`. |
 | `hooks/` | Guard (blocks literal secrets + confirms global scope) + nudge. |
 | `bundles/` | Vetted, ready-to-add server sets (e.g. `frontend`). |
 | `VETTING.md` | The security checklist `/mcp-secure:add` enforces for a brand-new server. |
@@ -85,6 +85,7 @@ e.g. `printf '{"Authorization":"Bearer %s"}\n' "$(mcp-secret op://Work/x/token)"
 
 Commands:
 - `/mcp-secure:add` — add a tool to this repo: a vetted bundle, or a brand-new server it vets first (runs [`VETTING.md`](VETTING.md)).
+- `/mcp-secure:remove` — remove a server: unregister it, `mcp-pin unpin` its baseline, and (the point) prompt to revoke/rotate its secret so no live key is orphaned.
 - `/mcp-secure:always-on` — set up an always-on server (team plugin or user scope).
 - `/mcp-secure:check` — one health check: the secret chain resolves **and** no tool drifted.
 - `/mcp-secure:verify` — focused drift-only check (the drift half of `check`, on its own).
