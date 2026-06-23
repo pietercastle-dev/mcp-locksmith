@@ -6,6 +6,11 @@ plugin's `.claude-plugin/plugin.json`.
 
 ## [Unreleased]
 
+_Planned: org-level config (v0.2) — an optional `org.json` letting a company point
+employees at internal MCP patterns/docs and a default gateway. See [ROADMAP.md](ROADMAP.md)._
+
+## [0.1.1] — 2026-06-23
+
 ### Security
 - **No more sourcing the secret-backend config.** `mcp-secret` and `install.sh` now
   parse `~/.config/mcp-secret/config` as `KEY=VALUE` instead of `source`-ing it,
@@ -80,4 +85,5 @@ safely, with secrets kept out of config and out of the model's context.
   bootstraps an age key on the SOPS path.
 - Secret backends: 1Password (`op`), Bitwarden (`bw`), SOPS+age (`sops`).
 
+[0.1.1]: https://github.com/pietercastle-dev/mcp-locksmith/releases/tag/v0.1.1
 [0.1.0]: https://github.com/pietercastle-dev/mcp-locksmith/releases/tag/v0.1.0

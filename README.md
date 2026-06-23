@@ -118,7 +118,9 @@ install.sh                        # one-time: puts the helpers on PATH + saves y
 
 ## Releases, trust & updates
 
-Versioned releases are tagged (`v0.1.0`, …). See **[CHANGELOG.md](CHANGELOG.md)**.
+Versioned releases are tagged (`v0.1.0`, …). See **[CHANGELOG.md](CHANGELOG.md)** for
+what's shipped and **[ROADMAP.md](ROADMAP.md)** for where it's headed (e.g. org-level
+config for teams).
 
 Installing this plugin lets its code run as a hook and resolve your vault secrets, so
 treat updates as a trust decision: **pin to a tagged release** rather than tracking
