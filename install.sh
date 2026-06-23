@@ -42,6 +42,13 @@ command -v bw   >/dev/null 2>&1 && avail+=("bw")
 CFG="$CFG_DIR/config"
 if [ -e "$CFG" ]; then
   info "mcp-secret config kept (exists): $CFG"
+  # Sanity-check a kept config so a previously-bogus backend gets flagged.
+  kept_backend="$(grep -E '^[[:space:]]*MCP_SECRET_BACKEND[[:space:]]*=' "$CFG" 2>/dev/null | tail -1 | cut -d= -f2- | tr -d '[:space:]')"
+  case "$kept_backend" in
+    op|sops|bw) ;;
+    "") warn "no MCP_SECRET_BACKEND in $CFG — short refs won't resolve. Edit it, or 'rm $CFG' and re-run." ;;
+    *)  warn "MCP_SECRET_BACKEND in $CFG is '$kept_backend' — not a valid backend (op/sops/bw). 'rm $CFG' and re-run, or fix it by hand." ;;
+  esac
 elif [ "${#avail[@]}" -eq 0 ]; then
   warn "no secret backend CLI found (op / sops / bw). Install one, then create $CFG."
 else
@@ -51,7 +58,16 @@ else
     printf "Default backend for short refs [%s]: " "${avail[0]}"
     read -r default </dev/tty || true
   fi
+  # Strip stray whitespace, then validate — a backend MUST be op/sops/bw. This
+  # guards against a fat-fingered or pasted answer landing in the config as a
+  # bogus backend (which would break every secret resolution).
+  default="$(printf '%s' "$default" | tr -d '[:space:]')"
   [ -z "$default" ] && default="${avail[0]}"
+  case "$default" in
+    op|sops|bw) ;;
+    *) warn "'$default' isn't a known backend (op/sops/bw) — using ${avail[0]} instead."
+       default="${avail[0]}" ;;
+  esac
   {
     echo "# mcp-secret machine config — see the mcp-secure README"
     echo "MCP_SECRET_BACKEND=$default"

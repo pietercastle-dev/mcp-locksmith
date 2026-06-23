@@ -7,6 +7,10 @@ plugin's `.claude-plugin/plugin.json`.
 ## [Unreleased]
 
 ### Fixed
+- **install.sh validates the backend answer.** A pasted/fat-fingered response to the
+  "default backend" prompt used to be written into the config verbatim (breaking every
+  secret resolution). It's now validated against `op`/`sops`/`bw` and falls back to the
+  detected backend; a re-run also flags an already-bogus config with recovery steps.
 - **SOPS backend on macOS.** `sops`' default age-key location is platform-specific
   (`~/Library/Application Support/…` on macOS), so it never found the key `install.sh`
   writes to `~/.config/sops/age/keys.txt` — every SOPS secret failed to resolve while
