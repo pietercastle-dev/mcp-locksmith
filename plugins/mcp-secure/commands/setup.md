@@ -62,7 +62,9 @@ Then go through these steps, pausing for the user between each:
    (`/mcp-secure:add` for any new tool — ready-made or brand-new,
    `/mcp-secure:always-on` for an always-on one like Slack), and where their keys
    live (their vault, never the
-   config).
+   config). **If they already had tools set up before installing this**, mention
+   `/mcp-secure:audit` once — it reviews those and brings them into the safe setup
+   (the plugin doesn't touch pre-existing tools on its own).
 
 Rules: never print or echo a real secret. Don't overwhelm — offer the next step,
 don't list every feature. Meet the user where they are.

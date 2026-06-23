@@ -28,6 +28,11 @@ plugin's `.claude-plugin/plugin.json`.
   vetted MCP server versions in bundles stay manually re-vetted).
 
 ### Added
+- **`/mcp-secure:audit`** — review **already-installed** servers (installing the plugin
+  doesn't touch them) and adopt them into the harness: migrate inline secrets to
+  references, pin versions/baselines, flag `http://`. Scoped as config hygiene, not a
+  scanner — deep provenance/poisoning analysis is handed off to the tools in
+  `VETTING.md`. `mcp-doctor` now also flags pre-existing literal secrets in config.
 - **`/mcp-secure:remove`** — a guided removal flow that closes the tool lifecycle:
   unregister the server from its scope, `mcp-pin unpin` its baseline, and prompt to
   **revoke/rotate its secret** so a removed tool never leaves a live orphaned key.

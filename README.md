@@ -52,9 +52,14 @@ or API key — and setup will guide you if so.
 | `/mcp-secure:setup` | **Start here** — guided first-time setup |
 | `/mcp-secure:add` | Add a tool to the current project — a ready-made one (e.g. a browser), or a brand-new one it safety-checks first |
 | `/mcp-secure:remove` | Remove a tool — unregister it, clean up its pin, and revoke its key |
+| `/mcp-secure:audit` | Review tools you **already** had and bring them into the safe setup |
 | `/mcp-secure:check` | One health check — secrets resolve, and no tool changed since you approved it |
 | `/mcp-secure:verify` | Focused drift-only check (also rolled into `check`) |
 | `/mcp-secure:always-on` | Set up an always-on tool (e.g. Slack everywhere) |
+
+> **Already have tools set up?** Installing this plugin doesn't change or inspect them
+> — it protects what you add *from here on*. Run `/mcp-secure:audit` once to review the
+> ones you already had (keys in plain text, unpinned versions) and bring them in.
 
 ## How it keeps your keys safe (in one paragraph)
 

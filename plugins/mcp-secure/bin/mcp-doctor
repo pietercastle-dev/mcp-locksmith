@@ -14,6 +14,7 @@ Usage: mcp-doctor [config.json ...]
 """
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -113,6 +114,47 @@ else:
             warn("jq not installed (needed for bw refs)"); tip(install_hint("jq"))
 
 
+# Literal-secret detection for EXISTING config (mirrors mcp-guard.py — keep in sync).
+# The guard stops new secrets going in; this catches ones already sitting in config.
+_SECRET_KEY = re.compile(
+    r"(TOKEN|SECRET|PASSWORD|PASSWD|APIKEY|API_KEY|ACCESS_KEY|PRIVATE_KEY|"
+    r"CREDENTIAL|CLIENT_SECRET|AUTH|BEARER|\bKEY\b|\bPAT\b)", re.I)
+_SECRET_VAL = re.compile(
+    r"(ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|"
+    r"xox[baprs]-[A-Za-z0-9-]{10,}|sk-[A-Za-z0-9]{20,}|"
+    r"AKIA[0-9A-Z]{16}|eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}|"
+    r"AIza[0-9A-Za-z_\-]{30,}|-----BEGIN[ A-Z]*PRIVATE KEY-----|"
+    r"[a-z][a-z0-9+.\-]*://[^/?#@\s:]+:[^/?#@\s]+@)")
+_SAFE_VAL = re.compile(r"^\s*(\$\{[^}]+\}|\$[A-Za-z_]\w*|op://|sops://|bw://)")
+
+
+def _looks_secret(key, val):
+    if not isinstance(val, str) or not val.strip() or _SAFE_VAL.search(val):
+        return False
+    if _SECRET_VAL.search(val):
+        return True
+    return bool(key and _SECRET_KEY.search(key) and len(val.strip()) >= 12)
+
+
+def inline_secrets(spec):
+    """Literal secrets sitting in a server's env/args (not a reference).
+
+    env uses the key+value heuristic (env names like GITHUB_TOKEN are meaningful).
+    args are matched on value SHAPE only — a CLI flag name like `--secret` is not a
+    reliable key, and `mcp-launch --secret NAME=op://…` must not be mistaken for a
+    leak. A credential-shaped value (`ghp_…`, `sk-…`, `user:pass@`) is caught
+    wherever it sits; a reference (`op://…`) is not.
+    """
+    hits = []
+    for k, v in (spec.get("env") or {}).items():
+        if _looks_secret(k, v):
+            hits.append(f"env.{k}")
+    for i, a in enumerate(spec.get("args") or []):
+        if isinstance(a, str) and _SECRET_VAL.search(a):
+            hits.append(f"args[{i}]")
+    return hits
+
+
 def refs_from_server(spec):
     refs = set()
     args = spec.get("args") or []
@@ -141,8 +183,8 @@ def refs_from_server(spec):
 
 paths = sys.argv[1:] or [p for p in ["./.mcp.json", os.path.expanduser("~/.claude.json")] if os.path.exists(p)]
 
-head("reference resolution")
 collected = []
+inline_found = []
 for p in paths:
     try:
         data = json.load(open(p))
@@ -152,7 +194,22 @@ for p in paths:
         if isinstance(spec, dict):
             for ref in refs_from_server(spec):
                 collected.append((name, ref))
+            for where in inline_secrets(spec):
+                inline_found.append((p, name, where))
 
+# --- literal secrets already in config (the guard only stops NEW ones) ---
+head("inline secrets")
+if not paths:
+    info("no MCP config files found")
+elif not inline_found:
+    ok("no literal secrets in config")
+else:
+    for p, name, where in inline_found:
+        bad(f"{name}: literal secret at {where} in {p}"); fails += 1
+    tip("move it to a reference: keep the value in your vault and launch via "
+        "mcp-launch (op://… / sops://… / bw://…). /mcp-secure:audit can migrate it.")
+
+head("reference resolution")
 if not paths:
     warn("no MCP config files found (./.mcp.json, ~/.claude.json)")
 elif not collected:
