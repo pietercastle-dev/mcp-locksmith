@@ -10,9 +10,13 @@ into a config without a deliberate, security-first look.
    it — Claude Code runs the flow and stores the token in its own credential store,
    so there's **no static secret at all**. Only fall back to a token (step 5) when
    OAuth isn't an option. The most secure secret is the one you never have to store.
-   *Caveat:* Claude Code's OAuth requires the provider to support Dynamic Client
-   Registration (RFC 7591). Some servers (e.g. Slack's) don't and fail with "does not
-   support dynamic client registration" — fall back to a token via `mcp-launch`.
+   *Caveat:* Claude Code auto-registers via Dynamic Client Registration (RFC 7591),
+   but many official servers (Slack, GitHub, Entra-backed) don't support it ("does not
+   support dynamic client registration"). Usual fix: supply the provider's pre-registered
+   `oauth.clientId` + `callbackPort` (the client id is public, not a secret; PKCE means
+   no client secret). Only fall back to a token via `mcp-launch` if there's no OAuth
+   client at all. (Claude Code also has a known SDK bug that can attempt DCR before
+   honoring a provided clientId.)
 
 1. **Provenance.** Who publishes it? Official vendor or a third party? Find the
    source repo. Check stars/activity and the last release. Be alert to
