@@ -57,6 +57,7 @@ here from an empty argument, ask what they want.
 Work through the checklist, doing real research — don't assume:
 
 1. **Auth model first.** Check whether the server supports OAuth / remote auth. If it does, prefer that — Claude Code handles the flow and stores the token itself, so there's **no static secret at all**. Only fall back to a token if OAuth isn't available.
+   - *Caveat:* Claude Code's OAuth needs the provider to support **Dynamic Client Registration** (RFC 7591). Some official servers (e.g. Slack's `mcp.slack.com`) don't, and fail to connect with `does not support dynamic client registration`. If that happens, fall back to a token-based server via `mcp-launch`, or use the provider's app/connector if one exists. Tell the user OAuth is preferred but may not complete, rather than promising it'll "just work".
 2. **Provenance.** Web-search the package/server: publisher (official vs third party), source repo, activity, last release. State the trust level; flag typosquats, no source, abandonment.
 3. **Pin a version.** Never `@latest` / unpinned `npx -y`. Find and pin the current version.
 4. **Permissions / tools.** Enumerate exposed tools. Prefer read-only / least privilege; enable destructive tools only on explicit confirmation.
