@@ -6,26 +6,40 @@ plugin's `.claude-plugin/plugin.json`.
 
 ## [Unreleased]
 
+_Planned: org-level config — an optional `org.json` letting a company point employees
+at internal MCP patterns/docs and a default gateway (point-at only). User-bundle
+support (below) is the first piece. See [ROADMAP.md](ROADMAP.md)._
+
+## [0.2.0] — 2026-06-24
+
+Validated end-to-end by a live dogfood — natural-language tool requests, SOPS secret
+resolution, the guard, and a real OAuth add (Slack) all confirmed working — which also
+turned up several fixes below.
+
 ### Added
 - **Private (user/team) bundles.** Keep your own vetted server sets in
   `~/.config/mcp-secret/bundles/` (override `$MCP_USER_BUNDLES`) without committing them
   to the public plugin. `mcp-bundles --all` lists shipped + private; `/mcp-secure:add`
-  and the nudge read both. (First step toward the v0.2 org-config story.)
+  and the nudge read both. (First step toward the org-config story.)
 
 ### Fixed
-- **install.sh validates the backend answer.** A pasted/fat-fingered response to the
-  "default backend" prompt used to be written into the config verbatim (breaking every
-  secret resolution). It's now validated against `op`/`sops`/`bw` and falls back to the
-  detected backend; a re-run also flags an already-bogus config with recovery steps.
 - **SOPS backend on macOS.** `sops`' default age-key location is platform-specific
   (`~/Library/Application Support/…` on macOS), so it never found the key `install.sh`
   writes to `~/.config/sops/age/keys.txt` — every SOPS secret failed to resolve while
   `mcp-doctor` misleadingly reported the key "present". `mcp-secret` now exports
-  `SOPS_AGE_KEY_FILE` pointing at the managed key when the user hasn't set one. Found by
-  an end-to-end dogfood (resolve a real secret through the full chain).
-
-_Planned: org-level config (v0.2) — an optional `org.json` letting a company point
-employees at internal MCP patterns/docs and a default gateway. See [ROADMAP.md](ROADMAP.md)._
+  `SOPS_AGE_KEY_FILE` pointing at the managed key when the user hasn't set one.
+- **install.sh validates the backend answer.** A pasted/fat-fingered response to the
+  "default backend" prompt used to be written into the config verbatim (breaking every
+  secret resolution). It's now validated against `op`/`sops`/`bw` and falls back to the
+  detected backend; a re-run also flags an already-bogus config with recovery steps.
+- **OAuth guidance corrected.** The add/vetting flow no longer implies OAuth "just
+  works." Many official remote servers (Slack, GitHub, Entra-backed) don't support
+  Dynamic Client Registration; the flow now points at supplying the provider's *public*
+  `oauth.clientId` + `callbackPort` (PKCE means no client secret), with a token fallback
+  only if there's no OAuth client. Verified live — Slack connected via the clientId.
+- **Stray root `.mcp.json` gitignored.** A consumed `.mcp.json` written into the plugin
+  repo (e.g. a setup flow run from the wrong dir) is no longer commit-able — it would
+  leak the runner's server topology. Anchored so the `mcp-globals` template stays tracked.
 
 ## [0.1.1] — 2026-06-23
 
@@ -103,5 +117,6 @@ safely, with secrets kept out of config and out of the model's context.
   bootstraps an age key on the SOPS path.
 - Secret backends: 1Password (`op`), Bitwarden (`bw`), SOPS+age (`sops`).
 
+[0.2.0]: https://github.com/pietercastle-dev/mcp-locksmith/releases/tag/v0.2.0
 [0.1.1]: https://github.com/pietercastle-dev/mcp-locksmith/releases/tag/v0.1.1
 [0.1.0]: https://github.com/pietercastle-dev/mcp-locksmith/releases/tag/v0.1.0
