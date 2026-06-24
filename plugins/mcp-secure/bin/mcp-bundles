@@ -1,12 +1,35 @@
 #!/usr/bin/env bash
-# Prints the absolute path to the mcp-secure plugin's bundles directory.
-# Self-locating (resolves symlinks) so it works whether invoked from the plugin
-# cache dir, a ~/.local/bin symlink, or ${CLAUDE_PLUGIN_ROOT}/bin. Used by the
-# /mcp-setup command to find shipped bundles without depending on env vars.
+# Prints MCP bundle locations for /mcp-secure:add. Self-locating (resolves symlinks)
+# so it works from the plugin cache dir, a ~/.local/bin symlink, or ${CLAUDE_PLUGIN_ROOT}/bin.
+#
+#   mcp-bundles          -> the plugin's shipped bundles dir (default; backward compatible)
+#   mcp-bundles --user   -> your private bundles dir (~/.config/mcp-secret/bundles)
+#   mcp-bundles --all    -> every *.json bundle path from shipped + private, one per line
+#
+# Private bundles let you keep your own/team vetted server sets without committing them
+# to the public plugin. Override the location with $MCP_USER_BUNDLES.
 set -euo pipefail
 src="${BASH_SOURCE[0]}"
 src="$(readlink -f "$src" 2>/dev/null || echo "$src")"
 here="$(cd "$(dirname "$src")" && pwd)"
-bundles="$(cd "$here/../bundles" 2>/dev/null && pwd)" || {
-  echo "mcp-bundles: bundles dir not found near $here" >&2; exit 1; }
-printf '%s\n' "$bundles"
+shipped="$(cd "$here/../bundles" 2>/dev/null && pwd || true)"
+user_dir="${MCP_USER_BUNDLES:-$HOME/.config/mcp-secret/bundles}"
+
+case "${1:-}" in
+  --user)
+    printf '%s\n' "$user_dir"
+    ;;
+  --all)
+    for d in "$shipped" "$user_dir"; do
+      [ -n "$d" ] && [ -d "$d" ] || continue
+      for f in "$d"/*.json; do [ -e "$f" ] && printf '%s\n' "$f"; done
+    done
+    ;;
+  "")
+    [ -n "$shipped" ] || { echo "mcp-bundles: bundles dir not found near $here" >&2; exit 1; }
+    printf '%s\n' "$shipped"
+    ;;
+  *)
+    echo "usage: mcp-bundles [--user|--all]" >&2; exit 2
+    ;;
+esac

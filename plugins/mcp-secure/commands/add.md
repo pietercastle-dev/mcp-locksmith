@@ -17,9 +17,11 @@ cases — figure out which you're in, don't make the user choose:
 
 **First, decide which path you're on:**
 
-1. List the shipped bundles: run `mcp-bundles` (a helper on PATH that prints the
-   bundles dir), then `ls "$(mcp-bundles)"/*.json`. The bundle name is the filename
-   without `.json`.
+1. List all available bundles — both the plugin's shipped ones **and** the user's
+   private ones — by running `mcp-bundles --all` (prints every bundle file path, one
+   per line). The bundle name is the filename without `.json`. (Private bundles live in
+   `~/.config/mcp-secret/bundles/`, via `mcp-bundles --user`; that's where a user/team
+   keeps their own vetted sets without committing them to the public plugin.)
 2. Look at `$ARGUMENTS`:
    - **Empty** → this is almost always someone wanting a ready-made tool. Go to
      **Ready-made** and let them pick. (If they then describe a tool that isn't a

@@ -21,7 +21,7 @@ the common leak vectors.
 | `commands/` | `/mcp-secure:setup`, `:add` (bundle or vetted new server), `:remove`, `:audit`, `:always-on`, `:check`, `:verify`. |
 | `skills/` | `add-tool`, `remove-tool`, `audit-tools` — auto-trigger the flows above from plain-language requests (no slash command needed); they route to the matching command. |
 | `hooks/` | Guard (blocks literal secrets + confirms global scope) + nudge. |
-| `bundles/` | Vetted, ready-to-add server sets (e.g. `frontend`). |
+| `bundles/` | Vetted, ready-to-add server sets (e.g. `frontend`). Your own/team **private** bundles go in `~/.config/mcp-secret/bundles/` (`mcp-bundles --user`) — `/mcp-secure:add` reads both via `mcp-bundles --all`. |
 | `VETTING.md` | The security checklist `/mcp-secure:add` enforces for a brand-new server. |
 | `BACKENDS.md` | Secure setup for each secret backend (1Password / Bitwarden / SOPS+age). |
 

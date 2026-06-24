@@ -6,6 +6,12 @@ plugin's `.claude-plugin/plugin.json`.
 
 ## [Unreleased]
 
+### Added
+- **Private (user/team) bundles.** Keep your own vetted server sets in
+  `~/.config/mcp-secret/bundles/` (override `$MCP_USER_BUNDLES`) without committing them
+  to the public plugin. `mcp-bundles --all` lists shipped + private; `/mcp-secure:add`
+  and the nudge read both. (First step toward the v0.2 org-config story.)
+
 ### Fixed
 - **install.sh validates the backend answer.** A pasted/fat-fingered response to the
   "default backend" prompt used to be written into the config verbatim (breaking every

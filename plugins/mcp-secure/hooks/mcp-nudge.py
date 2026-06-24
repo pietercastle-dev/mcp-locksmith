@@ -56,10 +56,14 @@ except Exception:
 # --- NO servers: the original "get started" nudge ---
 if not servers:
     plugin_root = os.environ.get("CLAUDE_PLUGIN_ROOT")
-    bundle_dir = (os.path.join(plugin_root, "bundles") if plugin_root
-                  else os.path.join(home, ".claude", "mcp-bundles"))
-    bundles = sorted(os.path.splitext(os.path.basename(p))[0]
-                     for p in glob.glob(os.path.join(bundle_dir, "*.json")))
+    dirs = []
+    if plugin_root:
+        dirs.append(os.path.join(plugin_root, "bundles"))
+    # the user's private bundles (their own / team vetted sets)
+    dirs.append(os.environ.get("MCP_USER_BUNDLES") or
+                os.path.join(home, ".config", "mcp-secret", "bundles"))
+    bundles = sorted({os.path.splitext(os.path.basename(p))[0]
+                      for d in dirs for p in glob.glob(os.path.join(d, "*.json"))})
     if not bundles:
         sys.exit(0)
     emit("This git repo has no MCP servers (tools) configured yet. Available bundles: "
