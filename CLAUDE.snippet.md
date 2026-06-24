@@ -9,7 +9,8 @@ deliberate.** Managed by the `mcp-secure` plugin.
 - **Project tier (most servers):** each repo declares what it needs in a committed
   `.mcp.json`. Vetted sets ship as bundles with the plugin — `/mcp-secure:add`
   adds a tool to the current repo: a ready-made bundle, or a brand-new server it
-  vets first (runs the plugin's VETTING.md).
+  vets first (runs the plugin's VETTING.md). Your own/team private bundles live in
+  `~/.config/mcp-secret/bundles/` and are offered alongside the shipped ones.
 - **Global tier (the few always-on servers, e.g. Slack at work):** team-shared
   globals live in a dedicated globals plugin (loaded in every repo when enabled);
   personal one-offs go in user scope. Manage with `/mcp-secure:always-on`. Keep it
