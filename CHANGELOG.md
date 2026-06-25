@@ -6,6 +6,11 @@ plugin's `.claude-plugin/plugin.json`.
 
 ## [Unreleased]
 
+_Planned: org-config gateway routing (point-at only) + policy surfacing — deferred
+until there's a real gateway to design against. See [ROADMAP.md](ROADMAP.md)._
+
+## [0.3.0] — 2026-06-24
+
 ### Added
 - **Org config — pointer layer.** An optional `org.json`
   (`~/.config/mcp-secret/org.json` or `$MCP_ORG_CONFIG`) lets a team point everyone at
@@ -123,6 +128,7 @@ safely, with secrets kept out of config and out of the model's context.
   bootstraps an age key on the SOPS path.
 - Secret backends: 1Password (`op`), Bitwarden (`bw`), SOPS+age (`sops`).
 
+[0.3.0]: https://github.com/pietercastle-dev/mcp-locksmith/releases/tag/v0.3.0
 [0.2.0]: https://github.com/pietercastle-dev/mcp-locksmith/releases/tag/v0.2.0
 [0.1.1]: https://github.com/pietercastle-dev/mcp-locksmith/releases/tag/v0.1.1
 [0.1.0]: https://github.com/pietercastle-dev/mcp-locksmith/releases/tag/v0.1.0
