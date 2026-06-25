@@ -31,8 +31,23 @@ if not os.path.isdir(os.path.join(cwd, ".git")):
 
 def emit(msg):
     print(json.dumps({"hookSpecificOutput": {
-        "hookEventName": "SessionStart", "additionalContext": msg}}))
+        "hookEventName": "SessionStart", "additionalContext": msg + org_suffix()}}))
     sys.exit(0)
+
+
+def org_suffix():
+    """If an org.json is present, append a pointer to the team's internal MCP docs."""
+    p = os.path.expanduser(os.environ.get("MCP_ORG_CONFIG", "~/.config/mcp-secret/org.json"))
+    try:
+        org = json.load(open(p))
+    except Exception:
+        return ""
+    bits = []
+    if org.get("docsUrl"):
+        bits.append(f"your org's MCP guide is at {org['docsUrl']}")
+    if org.get("recommended"):
+        bits.append(f"recommended tools: {', '.join(org['recommended'])}")
+    return (" (" + "; ".join(bits) + ")") if bits else ""
 
 
 # --- gather servers visible from here (project .mcp.json + user/project ~/.claude.json) ---

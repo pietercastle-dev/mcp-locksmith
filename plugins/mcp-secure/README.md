@@ -24,6 +24,7 @@ the common leak vectors.
 | `bundles/` | Vetted, ready-to-add server sets (e.g. `frontend`). Your own/team **private** bundles go in `~/.config/mcp-secret/bundles/` (`mcp-bundles --user`) — `/mcp-secure:add` reads both via `mcp-bundles --all`. |
 | `VETTING.md` | The security checklist `/mcp-secure:add` enforces for a brand-new server. |
 | `BACKENDS.md` | Secure setup for each secret backend (1Password / Bitwarden / SOPS+age). |
+| `ORG.md` | Optional team config: an `org.json` that points users at internal MCP docs + recommended bundles (surfaced, not enforced). |
 
 ## Install
 

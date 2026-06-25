@@ -93,6 +93,14 @@ another:
 Tool **drift detection** runs alongside these: `/mcp-secure:check` warns if an
 approved tool changes its capabilities later (a "rug-pull").
 
+## For teams
+
+Point everyone at your internal MCP conventions with an optional `org.json` — your
+team's docs link and recommended tools show up right in the flows (`add`, `setup`,
+`check`, and the startup nudge). It's surfaced, never enforced, and the plugin just
+reads a file you distribute. Keep your own vetted tool sets as **private bundles**.
+See **[`plugins/mcp-secure/ORG.md`](plugins/mcp-secure/ORG.md)**.
+
 ## For technical users
 
 The full design — the `mcp-secret` resolver and reference syntax, `mcp-launch`

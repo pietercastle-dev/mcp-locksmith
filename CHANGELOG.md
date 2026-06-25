@@ -6,9 +6,15 @@ plugin's `.claude-plugin/plugin.json`.
 
 ## [Unreleased]
 
-_Planned: org-level config — an optional `org.json` letting a company point employees
-at internal MCP patterns/docs and a default gateway (point-at only). User-bundle
-support (below) is the first piece. See [ROADMAP.md](ROADMAP.md)._
+### Added
+- **Org config — pointer layer.** An optional `org.json`
+  (`~/.config/mcp-secret/org.json` or `$MCP_ORG_CONFIG`) lets a team point everyone at
+  internal MCP conventions: org name + an internal docs link (`docsUrl`) + `recommended`
+  bundles, surfaced in `/mcp-secure:add`, `:setup`, `:check`, and the nudge. The plugin
+  only *consumes* and *surfaces* it — distribution is the org's job. `gateway` fields are
+  accepted and shown as info; routing/policy enforcement is **not** built yet (needs a
+  real gateway to design against). See [`ORG.md`](plugins/mcp-secure/ORG.md) and
+  [ROADMAP.md](ROADMAP.md).
 
 ## [0.2.0] — 2026-06-24
 

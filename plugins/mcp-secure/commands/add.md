@@ -22,6 +22,11 @@ cases — figure out which you're in, don't make the user choose:
    per line). The bundle name is the filename without `.json`. (Private bundles live in
    `~/.config/mcp-secret/bundles/`, via `mcp-bundles --user`; that's where a user/team
    keeps their own vetted sets without committing them to the public plugin.)
+
+   **Org recommendations:** if `~/.config/mcp-secret/org.json` (or `$MCP_ORG_CONFIG`)
+   exists, read it — surface the `recommended` bundles **first** when offering choices,
+   and mention the org's `docsUrl` (their internal MCP page) so the user can follow team
+   conventions. (Org config is a pointer only; don't enforce anything. See `ORG.md`.)
 2. Look at `$ARGUMENTS`:
    - **Empty** → this is almost always someone wanting a ready-made tool. Go to
      **Ready-made** and let them pick. (If they then describe a tool that isn't a

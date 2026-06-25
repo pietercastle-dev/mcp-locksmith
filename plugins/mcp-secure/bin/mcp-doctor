@@ -50,6 +50,25 @@ if shutil.which("sfw"):
 else:
     tip("optional: 'npm i -g sfw' to block malicious packages when installing MCP servers")
 
+# --- organization (optional org.json) ---
+org_path = os.path.expanduser(os.environ.get("MCP_ORG_CONFIG", "~/.config/mcp-secret/org.json"))
+if os.path.exists(org_path):
+    head("organization")
+    try:
+        org = json.load(open(org_path))
+    except Exception as e:
+        warn(f"org config at {org_path} is invalid JSON: {e}")
+    else:
+        if org.get("org"):
+            ok(f"org: {org['org']}")
+        if org.get("docsUrl"):
+            tip(f"internal MCP docs: {org['docsUrl']}")
+        if org.get("recommended"):
+            tip(f"recommended bundles: {', '.join(org['recommended'])}")
+        gw = (org.get("gateway") or {}).get("url")
+        if gw:
+            tip(f"org gateway (info only — routing not enforced): {gw}")
+
 # --- secret backend ---
 cfg_path = os.path.expanduser(os.environ.get("MCP_SECRET_CONFIG", "~/.config/mcp-secret/config"))
 cfg = {}

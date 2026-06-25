@@ -3,45 +3,31 @@
 Shipped work is in [CHANGELOG.md](CHANGELOG.md). This file tracks deliberate future
 direction, not a backlog.
 
-## v0.2 — org-level configuration
+## Org-level configuration
 
 Let a company point its employees at internal MCP conventions without each person
-rediscovering them. The plugin **consumes** an optional org policy; it never tries to
+rediscovering them. The plugin **consumes** an optional org config; it never tries to
 *be* infrastructure.
 
-**Scope decided:**
+**Shipped (the pointer layer) — see [`plugins/mcp-secure/ORG.md`](plugins/mcp-secure/ORG.md):**
 
-- **Org pointer (do).** An optional `org.json` (well-known path like
-  `~/.config/mcp-secret/org.json`, an `$MCP_ORG_CONFIG` path/URL, or bundled in a
-  company's internal globals plugin — distribution is the org's job, via onboarding /
-  dotfiles / MDM). The `add` / `audit` flows and the SessionStart nudge surface it:
-  recommended bundles, and a link to the internal Confluence/Notion page.
-- **Default gateway — point-at only (do, lightly).** If `org.json` names a gateway,
-  store its URL + auth reference, default new servers to route through it, and
-  optionally warn when a direct (non-gateway) server is added. **The plugin must never
+- ✅ An optional `org.json` (`~/.config/mcp-secret/org.json` or `$MCP_ORG_CONFIG`) that
+  the `add` / `setup` flows, the SessionStart nudge, and `/mcp-secure:check` **surface**:
+  org name, a link to the internal Confluence/Notion page (`docsUrl`), and `recommended`
+  bundles (offered first, pairing with private bundles). Distribution is the org's job
+  (onboarding / dotfiles / MDM / an internal globals plugin).
+- ✅ `gateway` fields are accepted and the URL is shown as **info**, so the schema is
+  forward-compatible.
+
+**Still to do (needs a real gateway to design against):**
+
+- **Gateway routing — point-at only.** Default new servers to route through the org
+  gateway, and warn when a direct (non-gateway) server is added. **The plugin must never
   implement gateway protocol, auth brokering, or audit** — that's infra the org runs.
-- **Policy surfacing (do, advisory).** Flags like `requireVetting` / `preferGateway`
-  shape what the flows recommend. Like the guard, this is **advisory / best-effort**,
-  not enforcement — be explicit about that.
+  Deferred until there's a concrete gateway deployment to build/test against, not a guess.
+- **Policy enforcement.** `policy.*` flags (`requireVetting` / `preferGateway`) are
+  accepted but not acted on. When built, this stays **advisory / best-effort** (like the
+  guard), not hard enforcement — and should be explicit about that.
 
-Proposed shape (illustrative, not final — design against a real internal page first):
-
-```json
-{
-  "org": "Acme",
-  "docsUrl": "https://acme.atlassian.net/wiki/mcp-patterns",
-  "recommended": ["frontend", "acme-internal-tools"],
-  "gateway": { "url": "https://mcp-gw.acme.internal", "authRef": "op://Acme/mcp-gateway/token" },
-  "policy": { "requireVetting": true, "preferGateway": true }
-}
-```
-
-**Deliberately deferred / non-goals:**
-
-- Don't build a gateway, a policy *enforcement* engine, or org config *distribution* —
-  the plugin only reads a file an org provides.
-- Don't commit to a gateway integration shape while MCP gateway standards are still
-  emerging; design v0.2 against a concrete internal deployment, not a guess.
-
-A small forward-compatible seam (flows surface `org.json` if present, shipping nothing
-by default) can land earlier than the full feature if there's demand.
+**Non-goals:** don't build a gateway, a policy *enforcement* engine, or org-config
+*distribution* — the plugin only reads a file an org provides.

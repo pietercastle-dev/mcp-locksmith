@@ -19,7 +19,10 @@ Plain-language framing to lead with (adapt, don't recite verbatim):
 Then go through these steps, pausing for the user between each:
 
 1. **What they just installed.** One sentence: they now have safer, simpler tool
-   setup, with automatic guardrails. No action needed here.
+   setup, with automatic guardrails. No action needed here. **If
+   `~/.config/mcp-secret/org.json` (or `$MCP_ORG_CONFIG`) exists**, this is a managed/
+   team setup — mention the org by name and point them at its `docsUrl` (internal MCP
+   page) so they follow team conventions; favor the org's `recommended` bundles later.
 
 2. **Put the helpers in place.** Find the repo's `install.sh` (it's at the root of
    the mcp-locksmith marketplace repo; ask the user where they cloned it if you
