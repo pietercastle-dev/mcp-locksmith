@@ -1,30 +1,28 @@
 # mcp-secure
 
-> **This page is the technical reference.** If you're just getting started, begin at
-> the **[top-level README](../../README.md)** and run `/mcp-secure:setup` — it installs
-> and configures everything in plain language. Come back here for the design details.
+> **This page is the technical reference.** Start at the
+> **[top-level README](../../README.md)** and `/mcp-secure:setup` if you're new;
+> come back here for the design details.
 
-A Claude Code plugin that makes MCP servers **secret-safe by default**: credentials
-are resolved at spawn from your vault, never stored in config, never reach the
-model's context. It adds a vetting flow for new servers and guard hooks that stop
-the common leak vectors.
+A Claude Code plugin that makes MCP servers **secret-safe by default**:
+credentials are resolved at spawn from your vault, never stored in config, never
+reach the model's context — plus a vetting flow for new servers and guard hooks
+against the common leak vectors.
 
 ## What it provides
 
 | Component | Purpose |
 |-----------|---------|
 | `bin/mcp-secret` | Resolves a secret *reference* to plaintext from 1Password / SOPS / Bitwarden. |
-| `bin/mcp-launch` | Generic launcher: injects resolved secrets into a server at spawn (env or CLI flag), then execs it. Replaces per-server wrapper scripts. |
-| `bin/mcp-bundles` | Prints the path to the shipped bundles dir (used by `/mcp-secure:add`). |
+| `bin/mcp-launch` | Generic launcher: injects resolved secrets into a server at spawn (env or CLI flag), then execs it. |
 | `bin/mcp-doctor` | Health-checks the chain: backend auth + every config reference resolves. |
 | `bin/mcp-pin` | Pins each server's tool definitions and detects drift (rug-pull defense). |
-| `commands/` | `/mcp-secure:setup`, `:add` (bundle or vetted new server), `:remove`, `:audit`, `:always-on`, `:check`, `:verify`. |
-| `skills/` | `add-tool`, `remove-tool`, `audit-tools` — auto-trigger the flows above from plain-language requests (no slash command needed); they route to the matching command. |
-| `hooks/` | Guard (blocks literal secrets + confirms global scope) + nudge. |
-| `bundles/` | Vetted, ready-to-add server sets (e.g. `frontend`). Your own/team **private** bundles go in `~/.config/mcp-secret/bundles/` (`mcp-bundles --user`) — `/mcp-secure:add` reads both via `mcp-bundles --all`. |
-| `VETTING.md` | The security checklist `/mcp-secure:add` enforces for a brand-new server. |
-| `BACKENDS.md` | Secure setup for each secret backend (1Password / Bitwarden / SOPS+age). |
-| `ORG.md` | Optional team config: an `org.json` that points users at internal MCP docs + recommended bundles (surfaced, not enforced). |
+| `bin/mcp-bundles` | Lists bundle dirs (shipped + private) for `/mcp-secure:add`. |
+| `commands/` | `setup`, `add`, `remove`, `audit`, `always-on`, `check`, `verify` (see the top README's table). |
+| `skills/` | `add-tool` / `remove-tool` / `audit-tools` — route plain-language requests to the commands. |
+| `hooks/` | Guard (blocks literal secrets, confirms global scope) + session nudge. |
+| `bundles/` | Vetted, ready-to-add server sets. Private bundles: `~/.config/mcp-secret/bundles/`. |
+| `VETTING.md` / `BACKENDS.md` / `ORG.md` | Vetting checklist / backend setup / optional team config. |
 
 ## Install
 
@@ -33,16 +31,12 @@ the common leak vectors.
 /plugin install mcp-secure@mcp-locksmith
 ```
 
-Then run the one-time machine setup (puts the resolver on PATH + picks your default
-backend) — needed only if you use secret-backed servers in a repo's `.mcp.json`:
-
-```
-bash <path-to-cloned-repo>/install.sh
-```
+Then run `install.sh` from the cloned repo once (puts the resolver on PATH,
+records your default backend) — needed only for secret-backed servers.
 
 ## How secrets work
 
-You never put a secret in config — you put a **reference**, resolved at launch.
+Config holds a **reference**, resolved at launch:
 
 ```jsonc
 // in a server's .mcp.json entry
@@ -53,8 +47,9 @@ You never put a secret in config — you put a **reference**, resolved at launch
 }
 ```
 
-`mcp-launch` resolves each `--secret NAME=ref` (or `--arg FLAG=ref` for flag-only
-servers) via `mcp-secret`, injects it, and execs the server.
+`mcp-launch` resolves each `--secret NAME=ref` (or `--arg FLAG=ref` for
+flag-only servers — prefer `--secret`: argv is visible in `ps`, env is not) via
+`mcp-secret`, injects it, and execs the server.
 
 **Reference forms**
 
@@ -65,106 +60,70 @@ sops://~/secrets.sops.yaml#/cloudflare/token
 bw://cloudflare/token       # Bitwarden
 ```
 
-**Machine default** (`~/.config/mcp-secret/config`) lets short refs resolve per
-environment, so one config is portable across work/home:
+The machine default (`~/.config/mcp-secret/config`: `MCP_SECRET_BACKEND`, plus
+`MCP_OP_VAULT` / `MCP_SOPS_FILE`) lets short refs resolve per environment, so
+one config is portable across work/home.
 
-```sh
-# work laptop                 # home laptop
-MCP_SECRET_BACKEND=op         MCP_SECRET_BACKEND=sops
-MCP_OP_VAULT=Work             MCP_SOPS_FILE=~/secrets.sops.yaml
-```
-
-**HTTP servers:** prefer OAuth where supported (no static secret at all). If a
-remote server needs a header, use a `headersHelper` that prints the header as JSON,
-e.g. `printf '{"Authorization":"Bearer %s"}\n' "$(mcp-secret op://Work/x/token)"`.
+**HTTP servers:** prefer OAuth (no static secret). If a remote server needs a
+header, use a `headersHelper` that prints it as JSON, e.g.
+`printf '{"Authorization":"Bearer %s"}\n' "$(mcp-secret op://Work/x/token)"`.
 
 ## Adding servers — the priority order
 
-1. **OAuth-capable?** Use it. No static secret. (`/mcp-secure:add` checks this first for a brand-new server.)
+1. **OAuth-capable?** Use it — no static secret (`/mcp-secure:add` checks this first).
 2. **Token-only?** `mcp-launch` + a backend ref.
-3. **Guard hook** is the backstop — it denies literal secrets in any `.mcp.json`
-   and asks before a global (`-s user`) add.
-
-Commands:
-- `/mcp-secure:add` — add a tool to this repo: a vetted bundle, or a brand-new server it vets first (runs [`VETTING.md`](VETTING.md)).
-- `/mcp-secure:remove` — remove a server: unregister it, `mcp-pin unpin` its baseline, and (the point) prompt to revoke/rotate its secret so no live key is orphaned.
-- `/mcp-secure:audit` — review **already-installed** servers and adopt them into the harness (migrate inline secrets to references, pin versions/baselines). Config hygiene, *not* a scanner — it hands provenance/poisoning analysis off to the tools in `VETTING.md`.
-- `/mcp-secure:always-on` — set up an always-on server (team plugin or user scope).
-- `/mcp-secure:check` — one health check: the secret chain resolves **and** no tool drifted.
-- `/mcp-secure:verify` — focused drift-only check (the drift half of `check`, on its own).
+3. **Guard hook** is the backstop — denies literal secrets in any `.mcp.json`,
+   asks before a global (`-s user`) add.
 
 ## Tool pinning (rug-pull defense)
 
-Vetting checks a server when you add it — but a server can change its tool
-descriptions *after* you approve it (a "rug-pull"; tool descriptions are injected
-into the model's context, so a changed one can carry new hidden instructions).
-`mcp-pin` defends against that, locally and with no repo required:
+A server can change its tool descriptions *after* you approve it — and tool
+descriptions are injected into the model's context. `mcp-pin` defends locally:
 
 ```sh
 mcp-pin pin       # record the approved tool baseline (after vetting)
 mcp-pin verify    # re-check; flags DRIFT if a server's tools changed
-mcp-pin list      # show what's pinned
+mcp-pin list / unpin <name> / prune
 ```
 
-It auto-discovers servers from `~/.claude.json` (user scope + current project) and
-`./.mcp.json`, launches each stdio server, reads its `tools/list` over the MCP
-protocol, and hashes each tool's name/description/schema. Pins are stored per-user
-at `~/.config/mcp-secret/pins.json`, keyed by server identity (name + command +
-args) — a version bump reads as "new, re-pin". `verify` launches servers briefly,
-so it's an on-demand check, not a per-session cost. (stdio only for now.)
+It discovers servers from `./.mcp.json` and `~/.claude.json`, reads each stdio
+server's `tools/list` over the MCP protocol, and hashes each tool's
+name/description/schema. Pins live at `~/.config/mcp-secret/pins.json`, keyed by
+server identity (name + command + args) — a version bump reads as "new, re-pin".
+stdio only for now.
 
-## Optional: package-install firewall (personal hardening)
+## Optional: install-time firewall
 
-MCP servers usually launch via `npx`/`uvx`, which pull packages at install — a
-supply-chain surface. [Socket Firewall](https://github.com/SocketDev/sfw-free)
-(`sfw`) blocks confirmed-malicious packages, free and tokenless. The harness
-recommends running a new server's first install under it (`/mcp-secure:add` reminds you):
-
-```sh
-npm i -g sfw
-sfw npx -y some-mcp@1.2.3   # the first fetch is the exposure window
-```
-
-If you want it for **all** your installs, that's a personal choice — opt in yourself
-rather than having a tool rewrite your shell. Paste into your shell rc only if you
-accept the caveats below:
-
-```sh
-# ~/.zshrc — wrap interactive package installs with Socket Firewall
-for pm in npm pnpm yarn pip uv; do alias $pm="sfw $pm"; done
-```
-
-Caveats, so you're not surprised: aliases fire only in **interactive** shells (not
-scripts/CI/`npx` called by other tools), and `sfw` doesn't support **custom/private
-registries** — it'll break installs that need one. The harness deliberately does
-**not** edit your rc for you.
+MCP servers usually launch via `npx`/`uvx` — a supply-chain surface.
+[Socket Firewall](https://github.com/SocketDev/sfw-free) (`sfw`, free, tokenless)
+blocks known-malicious packages; run a new server's first fetch under it:
+`sfw npx -y some-mcp@1.2.3`. Wrapping *all* your installs (shell aliases) is a
+personal opt-in — note aliases only fire in interactive shells and `sfw` doesn't
+support custom/private registries. The harness never edits your rc for you.
 
 ## Security model
 
 - **At rest:** config holds references and `mcp-launch` invocations — no secrets.
-- **In context:** secrets resolve in a subprocess; values never return to the model.
-  The guard denies literal secrets written into MCP config — via `claude mcp add`
-  (`-e` or `add-json`), a shell redirect/tee into `*.mcp.json` / `~/.claude.json`, or
-  a Write/Edit, including secrets tucked in an `args` array.
-- **Guard is defense-in-depth, not a sandbox.** It's a PreToolUse hook that fails
-  *open* (unrecognized input is allowed) and matches the common leak shapes, not
-  every possible one. The real rule stands: never write a literal secret into config.
+- **In context:** secrets resolve in a subprocess; values never return to the
+  model. The guard denies literal secrets written into MCP config via
+  `claude mcp add`/`add-json`/`import`, shell redirects/tee, or Write/Edit —
+  including secrets tucked in `args` arrays.
+- **Guard is defense-in-depth, not a sandbox.** It fails *open* and matches the
+  common leak shapes, not every possible one. The real rule stands: never write
+  a literal secret into config.
 - **Scope:** project by default; global is opt-in and confirmed.
-- **Residual risk:** while a server runs, a secret passed as an argv flag (`--arg`)
-  is visible in `ps` for that process. Prefer `--secret` (env) where the server
-  supports it. Local-process exposure only — never on disk, never in context.
+- **Residual risk:** a secret passed via `--arg` is visible in `ps` while the
+  server runs. Prefer `--secret` (env).
 
-Full threat model, non-goals, and how to pin/update the plugin safely:
-**[../../SECURITY.md](../../SECURITY.md)**.
+Full threat model, non-goals, and plugin pinning: **[../../SECURITY.md](../../SECURITY.md)**.
 
 ## Backends
 
-| Backend | CLI | Reference | Notes |
-|---------|-----|-----------|-------|
+| Backend | CLI | Reference | Auth |
+|---------|-----|-----------|------|
 | 1Password | `op` | `op://vault/item/field` | `op signin` |
 | SOPS+age | `sops` | `sops://file#/key/path` | age key configured |
 | Bitwarden | `bw` (+`jq`) | `bw://item/field` | `bw unlock` + `BW_SESSION` |
 
-Secure, step-by-step setup for each (install from official source, authenticate,
-age-key generation + handling) lives in **[`BACKENDS.md`](BACKENDS.md)**.
-`/mcp-secure:check` reports exactly what's missing and the command to fix it.
+Secure step-by-step setup for each: **[`BACKENDS.md`](BACKENDS.md)**.
+`/mcp-secure:check` reports exactly what's missing and how to fix it.

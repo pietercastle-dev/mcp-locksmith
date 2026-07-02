@@ -1,15 +1,13 @@
 # Org configuration (optional)
 
-For teams: point everyone at your internal MCP conventions without each person
-rediscovering them. mcp-secure reads an optional **`org.json`** and *surfaces* it in
-the flows — it never enforces policy or routes traffic. The plugin only **consumes**
-this file; getting it onto machines is the org's job (onboarding script, dotfiles,
-MDM, or bundling it in an internal plugin).
+For teams: point everyone at your internal MCP conventions. mcp-secure reads an
+optional **`org.json`** and *surfaces* it in the flows — it never enforces
+policy or routes traffic. Distribution is the org's job (onboarding script,
+dotfiles, MDM, or an internal plugin).
 
 ## Location
 
-- `~/.config/mcp-secret/org.json` (default), or
-- the path in `$MCP_ORG_CONFIG`.
+`~/.config/mcp-secret/org.json` (default), or the path in `$MCP_ORG_CONFIG`.
 
 ## Schema
 
@@ -23,24 +21,10 @@ MDM, or bundling it in an internal plugin).
 }
 ```
 
-| Field | Used in v1 | Meaning |
-|-------|-----------|---------|
+| Field | Status | Meaning |
+|-------|--------|---------|
 | `org` | ✅ surfaced | Display name, shown in `/mcp-secure:check`. |
-| `docsUrl` | ✅ surfaced | Your internal page (Confluence/Notion). Shown in `check`, the nudge, `add`, `setup`. |
-| `recommended` | ✅ surfaced | Bundle names to suggest first in `/mcp-secure:add`. Pair with **private bundles** (`~/.config/mcp-secret/bundles/`) so your vetted sets are actually present. |
-| `gateway.url` / `gateway.authRef` | ℹ️ info only | Shown as information. Routing/defaulting through the gateway is **not** built yet (see [ROADMAP.md](../../ROADMAP.md)). |
-| `policy.*` | 🔒 reserved | Accepted but not enforced yet. The plugin's guard is advisory/defense-in-depth — org policy will be too. |
-
-## What it does (and doesn't)
-
-- **Does:** show your org name + internal docs link in the flows, and surface your
-  recommended bundles so `add` offers them first.
-- **Does not (yet):** route servers through a gateway, warn on direct servers, or
-  enforce `policy`. Those need a real gateway to design against — deliberately deferred.
-
-## Distributing it
-
-Ship `org.json` however you already manage machine config — an onboarding step, a
-dotfiles repo, your MDM, or inside a company **globals plugin** (see the `mcp-globals`
-template). Keep your team's vetted server sets in private bundles
-(`~/.config/mcp-secret/bundles/`, `mcp-bundles --user`) referenced from `recommended`.
+| `docsUrl` | ✅ surfaced | Your internal page — shown in `check`, the nudge, `add`, `setup`. |
+| `recommended` | ✅ surfaced | Bundle names offered first in `add`. Pair with private bundles (`~/.config/mcp-secret/bundles/`) so the sets are actually present. |
+| `gateway.*` | ℹ️ info only | Shown as information; routing not built yet (see [ROADMAP.md](../../ROADMAP.md)). |
+| `policy.*` | 🔒 reserved | Accepted, not enforced. Org policy will be advisory, like the guard. |
