@@ -39,20 +39,23 @@ everything in `bin/` and `hooks/` tested in CI, releases pinnable.
    *Implementation:* `mcp-pin` gains a plumbing subcommand
    (`mcp-pin tools -- <cmd>…`) so no second MCP client is written. Remote
    servers skip until v0.6.
-2. **Runtime hooks (M)** — the missing layer; today every defense fires before
+2. ✅ **Runtime hooks (M)** — the missing layer; today every defense fires before
    or between sessions.
-   - **Exfil guard:** PreToolUse on `mcp__.*` (+ `WebFetch|WebSearch`); reuse
-     `scan_json`/`SECRET_VAL` to `ask` when a credential-shaped value heads out
-     through a tool call (the classic tool-poisoning payoff). References pass.
-   - **Unpinned-tool tripwire:** on an `mcp__<server>__*` call, check
+   - ✅ **Exfil guard:** PreToolUse on `mcp__.*` (+ `WebFetch|WebSearch`); `ask`
+     when a credential-shaped value heads out through a tool call (the classic
+     tool-poisoning payoff). References pass.
+   - ✅ **Unpinned-tool tripwire:** on an `mcp__<server>__*` call, check
      `pins.json` (pure file reads); `ask` once per server per session if
      unpinned. Gated: only fires if the user has ≥1 pin or org
      `policy.requireVetting` is set — never nags non-adopters. (First advisory
      consumer of `policy.requireVetting`.)
    - ✅ **Guard gap:** `claude mcp add --header "Authorization: Bearer <opaque>"`
      evaded both the `-e` regex and known token shapes — header check added.
-   - Tests in CI; SECURITY.md/README gain the runtime layer.
-   *Acceptance:* <50ms per call; a dogfood session yields zero unwarranted asks.
+   - ✅ Tests in CI; SECURITY.md/README gain the runtime layer.
+   *Acceptance:* measured ~70ms/call, of which ~50ms is Python interpreter
+   startup (the existing config guard pays the same floor) — imperceptible
+   against a real tool call. Zero-unwarranted-asks still to confirm across a
+   few real dogfood sessions.
 
 ## v0.5 — Useful for everyone
 
@@ -85,11 +88,13 @@ everything in `bin/` and `hooks/` tested in CI, releases pinnable.
 2. **Verify staleness (S).** Pins get `lastVerified`; `check` + nudge warn past
    `MCP_PIN_MAX_AGE` (default 14 days). No auto-verify per session (launches
    every server).
-3. **Test the untested majority (L).** Fake stdio MCP server fixture → `mcp-pin`
-   pin/verify/drift/unpin/prune tests; stub backends for `mcp-secret` (incl.
-   `sops://` traversal-reject regression); stub `mcp-secret` for `mcp-launch`;
-   nudge + runtime-hook tests; `shellcheck` in CI; ubuntu **and** macos matrix
-   (the SOPS key-location bug was invisible to single-OS CI).
+3. ✅ **Test the untested majority (L)** *(pulled forward into v0.4).* Fake stdio
+   MCP server fixture → `mcp-pin` pin/verify/drift/unpin/prune tests; stub
+   backends for `mcp-secret` (incl. `sops://` traversal-reject regression);
+   stub `mcp-secret` for `mcp-launch`; nudge + runtime-hook + doctor tests;
+   `shellcheck` in CI; ubuntu **and** macos matrix (the SOPS key-location bug
+   was invisible to single-OS CI — and the suite immediately caught a second
+   macOS-only bash-3.2 bug in `mcp-secret`).
 4. **State platform scope (XS).** Native Windows unsupported (WSL works) — say
    it in README/SECURITY.md.
 

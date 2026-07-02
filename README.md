@@ -59,11 +59,14 @@ caught by another:
 
 1. **Add-time vetting** — provenance, pinned version, least privilege, a
    tool-poisoning check. See **[`VETTING.md`](plugins/mcp-secure/VETTING.md)**.
-2. **Runtime guard** — a hook blocks literal secrets from being written into
+2. **Config guard** — a hook blocks literal secrets from being written into
    config and flags global-scope changes. A best-effort safety net, not a sandbox.
-3. **Drift detection** — `/mcp-secure:check` warns if an approved tool changes
+3. **Call guard** — a hook watches outbound tool calls and checks with you if a
+   credential-shaped value is about to leave through one (the classic poisoned-tool
+   move), or on first use of a tool that was never pinned. Asks, never blocks.
+4. **Drift detection** — `/mcp-secure:check` warns if an approved tool changes
    its capabilities later (a "rug-pull").
-4. *Optional:* [Socket Firewall](https://github.com/SocketDev/sfw-free) (`sfw`)
+5. *Optional:* [Socket Firewall](https://github.com/SocketDev/sfw-free) (`sfw`)
    for install-time supply chain, and deeper scanners on demand (see `VETTING.md`).
 
 ## For teams

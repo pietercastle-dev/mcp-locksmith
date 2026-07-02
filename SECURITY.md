@@ -11,8 +11,12 @@ against, what it does **not**, and how it expects to be trusted and updated.
 2. **Unvetted / unpinned servers.** `VETTING.md` enforces provenance, version
    pinning, least privilege, and a tool-poisoning check.
 3. **Rug-pulls.** `mcp-pin` records a tool baseline; `/mcp-secure:check` flags
-   drift after approval.
-4. **Install-time supply chain.** Optional Socket Firewall (`sfw`) blocks
+   drift after approval, and a runtime hook asks on first-in-session use of an
+   unpinned server (only when pinning is in use or org policy requires vetting).
+4. **Secret exfiltration through tool calls.** A runtime hook asks — never
+   denies — when a credential-shaped value appears in an outbound tool call's
+   arguments (the classic tool-poisoning payoff). Known shapes only; fail-open.
+5. **Install-time supply chain.** Optional Socket Firewall (`sfw`) blocks
    known-malicious packages during a server's first fetch.
 
 ## Trust model & non-goals — what it does NOT do

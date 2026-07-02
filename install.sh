@@ -101,7 +101,10 @@ if [ "$ACTIVE_BACKEND" = "sops" ]; then
       case "$ans" in [Nn]*) do_gen=0 ;; esac
     fi
     if [ "$do_gen" -eq 1 ]; then
-      mkdir -p -m 700 "$(dirname "$AGE_KEY")"
+      # mkdir -p -m applies the mode only to the deepest dir (SC2174); chmod
+      # explicitly so the key dir is 700 even when parents pre-existed.
+      mkdir -p "$(dirname "$AGE_KEY")"
+      chmod 700 "$(dirname "$AGE_KEY")"
       ( umask 077; age-keygen -o "$AGE_KEY" >/dev/null 2>&1 )
       chmod 600 "$AGE_KEY"
       info "generated age key (chmod 600): $AGE_KEY"

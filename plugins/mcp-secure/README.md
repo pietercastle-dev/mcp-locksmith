@@ -20,7 +20,7 @@ against the common leak vectors.
 | `bin/mcp-bundles` | Lists bundle dirs (shipped + private) for `/mcp-secure:add`. |
 | `commands/` | `setup`, `add`, `update`, `remove`, `audit`, `always-on`, `check`, `verify` (see the top README's table). |
 | `skills/` | `add-tool` / `update-tool` / `remove-tool` / `audit-tools` — route plain-language requests to the commands. |
-| `hooks/` | Guard (blocks literal secrets, confirms global scope) + session nudge. |
+| `hooks/` | Config guard (blocks literal secrets, confirms global scope), call guard (asks on credential-shaped values in outbound tool calls + first use of an unpinned server), session nudge. |
 | `bundles/` | Vetted, ready-to-add server sets. Private bundles: `~/.config/mcp-secret/bundles/`. |
 | `VETTING.md` / `BACKENDS.md` / `ORG.md` | Vetting checklist / backend setup / optional team config. |
 
@@ -112,8 +112,13 @@ support custom/private registries. The harness never edits your rc for you.
   model. The guard denies literal secrets written into MCP config via
   `claude mcp add`/`add-json`/`import`, shell redirects/tee, or Write/Edit —
   including secrets tucked in `args` arrays.
-- **Guard is defense-in-depth, not a sandbox.** It fails *open* and matches the
-  common leak shapes, not every possible one. The real rule stands: never write
+- **At runtime:** a second hook watches outbound calls (`mcp__*` tools,
+  WebFetch/WebSearch) and `ask`s — never denies — when a credential-shaped value
+  is in the arguments (exfiltration, the tool-poisoning payoff), or on the first
+  use per session of a server with no pin baseline (gated: only if you use
+  pinning, or org `policy.requireVetting` is set). Pure local reads, no latency.
+- **Guards are defense-in-depth, not a sandbox.** They fail *open* and match the
+  common shapes, not every possible one. The real rule stands: never write
   a literal secret into config.
 - **Scope:** project by default; global is opt-in and confirmed.
 - **Residual risk:** a secret passed via `--arg` is visible in `ps` while the

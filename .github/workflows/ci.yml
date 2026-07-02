@@ -11,7 +11,12 @@ permissions:
 
 jobs:
   check:
-    runs-on: ubuntu-latest
+    # Both OSes on purpose: two shipped bugs (SOPS key location, bash-3.2 empty
+    # array under set -u) were macOS-only and invisible to Linux-only CI.
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
@@ -27,10 +32,19 @@ jobs:
             bash -n "$f"
           done
 
+      - name: shellcheck
+        if: runner.os == 'Linux'
+        run: |
+          shellcheck plugins/mcp-secure/bin/mcp-secret \
+                     plugins/mcp-secure/bin/mcp-launch \
+                     plugins/mcp-secure/bin/mcp-bundles \
+                     install.sh
+
       - name: Python syntax
         run: |
           for f in plugins/mcp-secure/hooks/mcp-guard.py \
                    plugins/mcp-secure/hooks/mcp-nudge.py \
+                   plugins/mcp-secure/hooks/mcp-call-guard.py \
                    plugins/mcp-secure/bin/mcp-doctor \
                    plugins/mcp-secure/bin/mcp-pin; do
             python -c "import sys; compile(open(sys.argv[1]).read(), sys.argv[1], 'exec')" "$f"
@@ -46,5 +60,10 @@ jobs:
             python -c "import json,sys; json.load(open(sys.argv[1]))" "$f"
           done
 
-      - name: Guard hook tests
-        run: python plugins/mcp-secure/hooks/tests/test_guard.py
+      - name: Tests
+        run: |
+          for t in plugins/mcp-secure/hooks/tests/test_*.py \
+                   plugins/mcp-secure/tests/test_*.py; do
+            echo "== $t"
+            python "$t"
+          done

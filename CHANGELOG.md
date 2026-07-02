@@ -19,6 +19,41 @@ plugin's `.claude-plugin/plugin.json`.
   arbitrary command and prints its MCP tool list as JSON; what the update flow
   uses to diff a candidate version against the current one.
 
+- **Runtime call guard** (`hooks/mcp-call-guard.py`) — the missing runtime
+  layer; every other defense fires before or between sessions. Two advisory
+  checks, both `ask` (never deny), fail-open, pure local reads:
+  - **Exfiltration guard** (`mcp__*` tools + WebFetch/WebSearch): asks when a
+    credential-shaped value (GitHub/Slack tokens, `sk-…`, AWS keys, JWTs, PEM,
+    creds-in-URL) is in an outbound tool call's arguments — the classic
+    tool-poisoning payoff. Vault references pass; value shapes only, so
+    ordinary payloads don't trigger it.
+  - **Unpinned-tool tripwire**: first use per session of a server with no
+    `mcp-pin` baseline asks once, pointing at `/mcp-secure:check`. Gated so
+    non-adopters are never nagged (fires only if ≥1 pin exists, or org
+    `policy.requireVetting` is set — the first, still advisory, consumer of
+    that flag).
+- **Test suite for the untested majority** — regression discovery for
+  everything in `bin/` and `hooks/`, not just the config guard: a fake stdio
+  MCP server fixture drives `mcp-pin` tests (pin, drift on changed/added/
+  removed tools, version-bump-reads-as-new, unpin/prune, the `tools`
+  subcommand); stubbed backend CLIs drive `mcp-secret` tests (ref parsing,
+  short-ref expansion, and regressions for two shipped security fixes:
+  `sops://` path-traversal reject and config parsed-not-executed);
+  `mcp-launch` (env/arg injection, no-spawn on failed resolve), `mcp-doctor`
+  (inline secrets in env/headers/args, reference resolution), `mcp-nudge`
+  (all nudge/silence paths), and the new call guard (48 cases total across
+  6 suites). CI now runs on **ubuntu and macos** (two shipped bugs were
+  macOS-only) and adds `shellcheck`.
+
+### Fixed
+- **`mcp-secret` fragment-less sops ref crash on macOS** (found by the new
+  tests): `sops://file` with no `#/key` fragment died with an unhelpful
+  `parts[@]: unbound variable` under bash 3.2 (macOS default) instead of the
+  intended "needs a key fragment" error — empty-array expansion under
+  `set -u`. Same guard idiom `mcp-launch` already used.
+- **`install.sh` age-key dir perms**: `mkdir -p -m 700` applies the mode only
+  to the deepest directory (shellcheck SC2174); now chmods explicitly.
+
 ### Security
 - **Guard covers `--header`.** `claude mcp add --transport http --header
   "Authorization: Bearer <token>"` previously slipped through — the `-e/--env`
@@ -28,9 +63,9 @@ plugin's `.claude-plugin/plugin.json`.
   Write/Edit; `Bearer ${VAR}` and reference forms stay allowed. `mcp-doctor`
   and the nudge scan existing `headers` for inline secrets too.
 
-_Still planned for v0.4: runtime hooks (exfiltration guard + unpinned-tool
-tripwire) — see [PLAN.md](PLAN.md). Org gateway routing stays deferred
-([ROADMAP.md](ROADMAP.md))._
+_v0.4 scope from [PLAN.md](PLAN.md) is complete (update flow + runtime hooks +
+header guard gap), with v0.6's test-suite item pulled forward. Org gateway
+routing stays deferred ([ROADMAP.md](ROADMAP.md))._
 
 ## [0.3.0] — 2026-06-24
 
