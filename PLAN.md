@@ -33,7 +33,12 @@ GitHub release. If not clean → fix, add a regression test, re-dogfood.
 **Then, in order:** bundle catalog (needs real per-server vetting research),
 v1.0 README repositioning + release-integrity pass. The dogfood sessions can
 now also exercise HTTP pinning (pin a remote server with headers; confirm
-OAuth-store servers are skipped quietly, not nagged about).
+OAuth-store servers are skipped quietly, not nagged about). Caveat found
+2026-07-01: `mcp-pin` discovery reads `./.mcp.json` + `~/.claude.json` only —
+plugin-scope servers (e.g. a globals plugin's) are invisible to it, so the
+HTTP-pinning dogfood needs a headers-based remote server in one of those
+scopes. Plugin-scope discovery is a candidate follow-up if the dogfood makes
+it feel like a gap.
 
 ## Definition of feature-complete
 
