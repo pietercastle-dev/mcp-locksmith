@@ -34,8 +34,12 @@ jobs:
 
       - name: shellcheck
         if: runner.os == 'Linux'
+        # warning severity: info-level notes (e.g. SC2015 on the intentional
+        # `check && check || die` idiom) vary by shellcheck version and are
+        # style, not defects — they shouldn't fail CI.
         run: |
-          shellcheck plugins/mcp-secure/bin/mcp-secret \
+          shellcheck --severity=warning \
+                     plugins/mcp-secure/bin/mcp-secret \
                      plugins/mcp-secure/bin/mcp-launch \
                      plugins/mcp-secure/bin/mcp-bundles \
                      install.sh
