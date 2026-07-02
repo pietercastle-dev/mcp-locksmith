@@ -20,8 +20,8 @@ reinventing them.
 What to check, across the current repo's `.mcp.json` and `~/.claude.json` (user scope
 + this project's entry):
 
-1. **Inline secrets → references.** Run `mcp-doctor`; it now flags any literal secret
-   sitting in `env`/`args`. For each, offer to migrate it: move the value into the
+1. **Inline secrets → references.** Run `mcp-doctor`; it flags any literal secret
+   sitting in `env`/`args`/`headers`. For each, offer to migrate it: move the value into the
    user's vault and rewrite the entry to launch via `mcp-launch` with a reference
    (`op://…` / `sops://…` / `bw://…`). This is the highest-value fix and the thing this
    harness uniquely does — lead with it. (Never print the resolved secret value.)

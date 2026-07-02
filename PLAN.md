@@ -6,6 +6,33 @@ QoL *and* security improvements for all MCP installation and handling.
 [ROADMAP.md](ROADMAP.md) holds the one deliberately deferred direction (org
 gateway/policy); shipped items move to [CHANGELOG.md](CHANGELOG.md).
 
+## Status (2026-07-01) & next actions
+
+**Done:** all of v0.4; v0.5 except the bundle catalog; v0.6 except HTTP pinning.
+Everything is on `main`, CI green (ubuntu + macos), release-pending under
+CHANGELOG `[Unreleased]`.
+
+**Next: the dogfood gate** (real-world sessions, planned 2026-07-02):
+
+1. Work normally in MCP-heavy sessions. The **exfil guard** must produce zero
+   unwarranted asks — note every ask it raises and whether it was warranted.
+2. The **tripwire** must stay silent with no pins; then `mcp-pin pin` one
+   server and confirm exactly one ask per session for *unpinned* servers only.
+3. Break a tool on purpose (rename a vault item, or lock the vault) →
+   "the X tool is broken" should route to the fix flow and `mcp-doctor
+   --launch` should name the real cause.
+4. Ask "are my tools up to date?" → the update flow should find the pinned
+   versions, diff a candidate's tools, and re-pin cleanly.
+5. Confirm the SessionStart nudge fires at most once and says something true.
+
+**If clean → stage the release:** bump
+`plugins/mcp-secure/.claude-plugin/plugin.json` (suggest **0.5.0** — the
+Unreleased block spans v0.4+v0.5 scope), date the CHANGELOG section, tag,
+GitHub release. If not clean → fix, add a regression test, re-dogfood.
+
+**Then, in order:** bundle catalog (needs real per-server vetting research),
+HTTP pinning in `mcp-pin`, v1.0 README repositioning + release-integrity pass.
+
 ## Definition of feature-complete
 
 A user who knows nothing about MCP can: **install** in ~2 minutes; **add any

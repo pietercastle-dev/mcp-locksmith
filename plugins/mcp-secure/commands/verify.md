@@ -29,5 +29,7 @@ Run `mcp-pin verify` and interpret the output for the user:
 - **unchanged** → all good.
 
 Notes: verifying launches each server briefly (resolving its secrets via mcp-launch),
-so it's an on-demand check, not something that runs every session. http/sse servers
+so it's an on-demand check, not something that runs every session — a clean verify
+stamps `lastVerified`, and the session nudge reminds the user when pinned tools
+haven't been checked in `MCP_PIN_MAX_AGE` days (default 14). http/sse servers
 aren't supported yet (stdio only). Never print resolved secret values.
