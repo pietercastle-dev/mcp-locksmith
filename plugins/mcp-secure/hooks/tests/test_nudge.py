@@ -103,9 +103,23 @@ class Nudge(unittest.TestCase):
         e = Env(servers={"s": {"command": "srv", "args": ["--x"]}}, pins=pins)
         self.assertIsNone(e.run())
 
-    def test_remote_server_not_counted_unpinned(self):
+    def test_oauth_style_remote_not_counted_unpinned(self):
+        # no headers/headersHelper → likely Claude Code OAuth, which mcp-pin
+        # can't baseline — stay silent rather than nag about the impossible
         e = Env(servers={"r": {"type": "http", "url": "https://x.example"}})
         self.assertIsNone(e.run())
+
+    def test_unpinned_remote_with_headers_nudges(self):
+        e = Env(servers={"r": {"type": "http", "url": "https://x.example",
+                               "headers": {"X-Api-Key": "${KEY}"}}})
+        self.assertIn("pinned", e.run())
+
+    def test_pinned_remote_stale_nudges_check(self):
+        pins = {identity("r", "https://x.example", []):
+                {"name": "r", "pinnedAt": "2026-01-01T00:00:00"}}
+        e = Env(servers={"r": {"type": "http", "url": "https://x.example",
+                               "headers": {"X-Api-Key": "${KEY}"}}}, pins=pins)
+        self.assertIn("drift-checked", e.run())
 
 
 if __name__ == "__main__":

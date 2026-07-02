@@ -8,9 +8,9 @@ gateway/policy); shipped items move to [CHANGELOG.md](CHANGELOG.md).
 
 ## Status (2026-07-01) & next actions
 
-**Done:** all of v0.4; v0.5 except the bundle catalog; v0.6 except HTTP pinning.
-Everything is on `main`, CI green (ubuntu + macos), release-pending under
-CHANGELOG `[Unreleased]`.
+**Done:** all of v0.4; v0.5 except the bundle catalog; all of v0.6 (HTTP pinning
+landed 2026-07-01). Everything is on `main`, CI green (ubuntu + macos),
+release-pending under CHANGELOG `[Unreleased]`.
 
 **Next: the dogfood gate** (real-world sessions, planned 2026-07-02):
 
@@ -31,7 +31,9 @@ Unreleased block spans v0.4+v0.5 scope), date the CHANGELOG section, tag,
 GitHub release. If not clean → fix, add a regression test, re-dogfood.
 
 **Then, in order:** bundle catalog (needs real per-server vetting research),
-HTTP pinning in `mcp-pin`, v1.0 README repositioning + release-integrity pass.
+v1.0 README repositioning + release-integrity pass. The dogfood sessions can
+now also exercise HTTP pinning (pin a remote server with headers; confirm
+OAuth-store servers are skipped quietly, not nagged about).
 
 ## Definition of feature-complete
 
@@ -107,11 +109,18 @@ everything in `bin/` and `hooks/` tested in CI, releases pinnable.
 
 ## v0.6 — Coverage & trust
 
-1. **HTTP support in `mcp-pin` (M).** The advice "prefer OAuth remote servers"
+1. ✅ **HTTP support in `mcp-pin` (M).** The advice "prefer OAuth remote servers"
    and "stdio only" are in tension — the recommended type is the one drift
    detection skips. Add `tools/list` over streamable HTTP honoring
    `headers`/`headersHelper`. OAuth tokens in Claude Code's store stay a
    documented gap — honest labeling over fake coverage.
+   *Implementation:* remote identity hashes as (name + url) — same scheme, url
+   in the command slot, so the keep-in-sync `identity()` copies changed
+   uniformly. The nudge and tripwire now cover remote servers with
+   `headers`/`headersHelper`, and stay QUIET about remote servers with neither
+   (likely OAuth — a pin may be impossible; never nag toward the impossible).
+   Legacy `type: "sse"` skipped with a note. Fake streamable-HTTP fixture
+   (JSON + SSE bodies, sessions, auth) + test_pin_http.py in CI.
 2. ✅ **Verify staleness (S).** Pins get `lastVerified`; the nudge warns past
    `MCP_PIN_MAX_AGE` (default 14 days), at most once per period. No auto-verify
    per session (launches every server).

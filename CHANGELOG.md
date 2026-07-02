@@ -7,6 +7,18 @@ plugin's `.claude-plugin/plugin.json`.
 ## [Unreleased]
 
 ### Added
+- **HTTP pinning** — `mcp-pin` now reads `tools/list` over streamable HTTP
+  (POST JSON-RPC; both `application/json` and `text/event-stream` response
+  bodies; `Mcp-Session-Id` threading), honoring the config's `headers` and
+  `headersHelper`, so drift detection covers the transport the docs recommend.
+  Remote identity is name + url. The session nudge and the unpinned-tool
+  tripwire now cover remote servers that carry `headers`/`headersHelper` — and
+  deliberately stay quiet about remote servers with neither, since those
+  likely authenticate via Claude Code's OAuth store, which `mcp-pin` can't
+  reach (the documented gap; `mcp-pin` explains it on a 401 instead of
+  pretending). Legacy `type: "sse"` servers are skipped with a note. Tested
+  against a fake streamable-HTTP server fixture (auth, sessions, SSE bodies,
+  drift across restarts).
 - **`/mcp-secure:update` + `update-tool` skill** — "Dependabot for your MCP
   servers", closing the lifecycle gap where vetting pins a version and nothing
   ever moves it. Discovers versioned specs (incl. inside `mcp-launch … --`),

@@ -12,7 +12,8 @@ Discovers servers wherever they live — NO repo required:
   - ~/.claude.json: user-scope mcpServers + the current dir's project entry
 
 Pins live per-user at ~/.config/mcp-secret/pins.json, keyed by server identity
-(name + command + args) — so a version bump reads as "new, re-pin".
+(name + command + args; name + url for remote servers) — so a version bump
+reads as "new, re-pin".
 
 Usage:
   mcp-pin                 verify all discovered servers (default)
@@ -26,8 +27,11 @@ Usage:
                           as JSON — lets /mcp-secure:update diff a candidate
                           version's tools against the current one before adopting
 
-stdio servers only for now; http/sse are skipped with a note. Exit non-zero if
-any server drifts from its pin or fails to verify.
+Covers stdio and streamable-HTTP servers (honoring `headers`/`headersHelper`).
+Known gap, labeled honestly: a remote server that authenticates via Claude
+Code's OAuth store can't be listed here (that token isn't ours to read) — those
+fail with a message saying so. Legacy `type: "sse"` servers are skipped with a
+note. Exit non-zero if any server drifts from its pin or fails to verify.
 """
 import hashlib
 import json
@@ -38,6 +42,8 @@ import sys
 import tempfile
 import threading
 import time
+import urllib.error
+import urllib.request
 
 G = "\033[1;32m"; R = "\033[1;31m"; Y = "\033[1;33m"; B = "\033[1;34m"; X = "\033[0m"
 def ok(m):   print(f"  {G}✔{X} {m}")
@@ -101,7 +107,7 @@ def discover():
     return servers
 
 
-def list_tools(spec):
+def list_tools_stdio(spec):
     """Launch a stdio server, handshake, return its tool dicts. Raises on failure."""
     command = expand(spec.get("command", ""))
     args = [expand(a) for a in (spec.get("args") or [])]
@@ -197,12 +203,172 @@ def list_tools(spec):
             pass
 
 
+def http_headers(spec):
+    """Static `headers` merged with `headersHelper` output (helper wins) — the
+    same contract Claude Code uses, so a config that connects in a session
+    authenticates identically here. The helper is a shell command that prints
+    a JSON object of headers."""
+    hdrs = {k: expand(v) for k, v in (spec.get("headers") or {}).items()}
+    helper = spec.get("headersHelper")
+    if helper:
+        r = subprocess.run(helper, shell=True, capture_output=True, text=True, timeout=TIMEOUT)
+        if r.returncode != 0:
+            tail = (r.stderr or r.stdout).strip().splitlines()
+            raise RuntimeError("headersHelper failed" + (f": {tail[-1]}" if tail else ""))
+        try:
+            got = json.loads(r.stdout)
+            if not isinstance(got, dict):
+                raise ValueError
+        except Exception:
+            raise RuntimeError("headersHelper must print a JSON object of headers")
+        hdrs.update({k: str(v) for k, v in got.items()})
+    return hdrs
+
+
+def list_tools_http(spec):
+    """Streamable-HTTP transport: POST JSON-RPC to the url, accepting both
+    application/json and text/event-stream response bodies and threading
+    Mcp-Session-Id. Raises on failure."""
+    url = expand(spec.get("url", ""))
+    if not url:
+        raise RuntimeError("no url")
+    if "${" in url:
+        raise RuntimeError("unresolved ${…} in url (plugin-scope server?)")
+    auth = http_headers(spec)
+    deadline = time.time() + TIMEOUT
+    session_id = None
+
+    def rpc(payload, want_id):
+        nonlocal session_id
+        remaining = deadline - time.time()
+        if remaining <= 0:
+            raise RuntimeError("timeout")
+        hdrs = dict(auth)
+        hdrs["Content-Type"] = "application/json"
+        hdrs["Accept"] = "application/json, text/event-stream"
+        hdrs.setdefault("MCP-Protocol-Version", "2025-06-18")
+        if session_id:
+            hdrs["Mcp-Session-Id"] = session_id
+        req = urllib.request.Request(url, data=json.dumps(payload).encode(),
+                                     headers=hdrs, method="POST")
+        try:
+            resp = urllib.request.urlopen(req, timeout=remaining)
+        except urllib.error.HTTPError as e:
+            if e.code in (401, 403) and not auth:
+                raise RuntimeError(
+                    f"HTTP {e.code} — the server wants auth and this config has no "
+                    "headers/headersHelper. If it authenticates via Claude Code's "
+                    "OAuth store, that token isn't reachable from here (a "
+                    "documented gap — see README).")
+            raise RuntimeError(f"HTTP {e.code} {e.reason}")
+        except Exception as e:
+            raise RuntimeError(f"cannot reach {url}: {getattr(e, 'reason', e)}")
+        with resp:
+            sid = resp.headers.get("Mcp-Session-Id")
+            if sid:
+                session_id = sid
+            if want_id is None:
+                return None
+            ctype = (resp.headers.get("Content-Type") or "").split(";")[0].strip().lower()
+            if ctype == "text/event-stream":
+                # The response arrives as SSE `data:` lines; read incrementally
+                # and stop at the matching id (servers may keep the stream open).
+                data_lines = []
+                for raw in resp:
+                    if time.time() > deadline:
+                        raise RuntimeError("timeout reading event stream")
+                    line = raw.decode("utf-8", "replace").rstrip("\r\n")
+                    if line.startswith("data:"):
+                        data_lines.append(line[5:].lstrip())
+                        continue
+                    if line:
+                        continue  # other SSE fields (event:, id:) — irrelevant here
+                    if data_lines:
+                        try:
+                            msg = json.loads("\n".join(data_lines))
+                        except Exception:
+                            msg = None
+                        data_lines = []
+                        if isinstance(msg, dict) and msg.get("id") == want_id:
+                            return msg
+                try:  # stream ended without a trailing blank line
+                    msg = json.loads("\n".join(data_lines))
+                except Exception:
+                    msg = None
+                if isinstance(msg, dict) and msg.get("id") == want_id:
+                    return msg
+                raise RuntimeError("event stream ended without a response")
+            body = resp.read().decode("utf-8", "replace")
+            if not body.strip():
+                return None
+            try:
+                msg = json.loads(body)
+            except Exception:
+                raise RuntimeError(f"non-JSON response ({ctype or 'no content-type'})")
+            if isinstance(msg, dict) and msg.get("id") == want_id:
+                return msg
+            raise RuntimeError("response id mismatch")
+
+    try:
+        resp = rpc({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {
+            "protocolVersion": "2025-06-18", "capabilities": {},
+            "clientInfo": {"name": "mcp-pin", "version": "0.1"}}}, 1)
+        if resp is None:
+            raise RuntimeError("no response to initialize")
+        if "error" in resp:
+            raise RuntimeError(f"initialize error: {resp['error']}")
+        try:
+            rpc({"jsonrpc": "2.0", "method": "notifications/initialized"}, None)
+        except Exception:
+            pass  # some servers reject the notification; tools/list may still work
+        tools, cursor, rid = [], None, 2
+        while True:
+            params = {} if cursor is None else {"cursor": cursor}
+            resp = rpc({"jsonrpc": "2.0", "id": rid, "method": "tools/list", "params": params}, rid)
+            rid += 1
+            if resp is None:
+                raise RuntimeError("no response to tools/list")
+            if "error" in resp:
+                raise RuntimeError(f"tools/list error: {resp['error']}")
+            res = resp.get("result") or {}
+            tools.extend(res.get("tools") or [])
+            cursor = res.get("nextCursor")
+            if not cursor:
+                break
+        return tools
+    finally:
+        if session_id:  # politely end the session (optional per spec)
+            try:
+                req = urllib.request.Request(
+                    url, headers=dict(auth, **{"Mcp-Session-Id": session_id}), method="DELETE")
+                urllib.request.urlopen(req, timeout=3).close()
+            except Exception:
+                pass
+
+
+def list_tools(spec):
+    return list_tools_http(spec) if is_remote(spec) else list_tools_stdio(spec)
+
+
 def current_hashes(spec):
     return {t["name"]: tool_hash(t) for t in list_tools(spec) if isinstance(t, dict) and "name" in t}
 
 
 def is_remote(spec):
     return spec.get("type") in ("http", "sse") or bool(spec.get("url"))
+
+
+def is_legacy_sse(spec):
+    return spec.get("type") == "sse"
+
+
+def spec_target(spec):
+    """Identity inputs for either transport: (command, args) for stdio,
+    (url, []) for remote — the url sits in the command slot so the hash
+    scheme (and every keep-in-sync copy of identity()) stays unchanged."""
+    if is_remote(spec):
+        return expand(spec.get("url", "")), []
+    return expand(spec.get("command", "")), [expand(a) for a in (spec.get("args") or [])]
 
 
 def select(names):
@@ -219,16 +385,20 @@ def cmd_pin(names):
     head("pinning")
     fails = 0
     for n, s in sel.items():
-        if is_remote(s):
-            warn(f"{n}: http/sse not supported yet — skipped"); continue
+        if is_legacy_sse(s):
+            warn(f"{n}: legacy SSE transport — can't pin (migrate to streamable http)"); continue
         try:
             hashes = current_hashes(s)
         except Exception as e:
             bad(f"{n}: {e}"); fails += 1; continue
-        cmd = expand(s.get("command", "")); args = [expand(a) for a in (s.get("args") or [])]
-        pins[identity(n, cmd, args)] = {
-            "name": n, "command": cmd, "args": args, "tools": hashes,
-            "pinnedAt": time.strftime("%Y-%m-%dT%H:%M:%S")}
+        cmd, args = spec_target(s)
+        entry = {"name": n, "tools": hashes,
+                 "pinnedAt": time.strftime("%Y-%m-%dT%H:%M:%S")}
+        if is_remote(s):
+            entry["url"] = cmd
+        else:
+            entry["command"] = cmd; entry["args"] = args
+        pins[identity(n, cmd, args)] = entry
         ok(f"{n}: pinned {len(hashes)} tool(s)")
     save_pins(pins)
     return 1 if fails else 0
@@ -243,9 +413,9 @@ def cmd_verify(names):
     fails = unpinned = 0
     dirty = False
     for n, s in sel.items():
-        if is_remote(s):
-            info(f"{n}: http/sse not supported yet — skipped"); continue
-        cmd = expand(s.get("command", "")); args = [expand(a) for a in (s.get("args") or [])]
+        if is_legacy_sse(s):
+            info(f"{n}: legacy SSE transport — can't verify (migrate to streamable http)"); continue
+        cmd, args = spec_target(s)
         pin = pins.get(identity(n, cmd, args))
         try:
             cur = current_hashes(s)
@@ -312,7 +482,7 @@ def cmd_prune(names):
     pins = load_pins()
     live = set()
     for n, s in discover().items():
-        cmd = expand(s.get("command", "")); args = [expand(a) for a in (s.get("args") or [])]
+        cmd, args = spec_target(s)
         live.add(identity(n, cmd, args))
     orphans = {k: v for k, v in pins.items() if k not in live}
     head("prune")

@@ -147,12 +147,20 @@ unpinned, stale = [], []
 for n, s in servers.items():
     if not isinstance(s, dict):
         continue
-    if s.get("type") in ("http", "sse") or s.get("url"):
-        continue  # remote servers can't be pinned yet
-    cmd = expand(s.get("command", "")); args = [expand(a) for a in (s.get("args") or [])]
+    if s.get("type") == "sse":
+        continue  # legacy SSE transport — mcp-pin can't baseline it
+    # Remote (streamable-HTTP) servers hash as (url, []) — mirrors mcp-pin spec_target.
+    remote = s.get("type") == "http" or bool(s.get("url"))
+    if remote:
+        cmd, args = expand(s.get("url", "")), []
+    else:
+        cmd = expand(s.get("command", "")); args = [expand(a) for a in (s.get("args") or [])]
     pin = pins.get(identity(n, cmd, args))
     if not pin:
-        unpinned.append(n)
+        # A remote server with no headers/headersHelper likely authenticates via
+        # Claude Code's OAuth store, which mcp-pin can't reach — don't count it.
+        if not remote or s.get("headers") or s.get("headersHelper"):
+            unpinned.append(n)
     else:
         age = pin_age_days(pin)
         if age is not None and age > MAX_AGE_DAYS:

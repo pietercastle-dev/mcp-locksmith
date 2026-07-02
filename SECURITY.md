@@ -13,6 +13,11 @@ against, what it does **not**, and how it expects to be trusted and updated.
 3. **Rug-pulls.** `mcp-pin` records a tool baseline; `/mcp-secure:check` flags
    drift after approval, and a runtime hook asks on first-in-session use of an
    unpinned server (only when pinning is in use or org policy requires vetting).
+   Covers stdio and streamable-HTTP servers (using the config's
+   `headers`/`headersHelper`). Labeled gap: a remote server that authenticates
+   via Claude Code's OAuth store can't be baselined — that token isn't readable
+   from outside — so the hooks stay quiet about those rather than nag toward
+   the impossible.
 4. **Secret exfiltration through tool calls.** A runtime hook asks — never
    denies — when a credential-shaped value appears in an outbound tool call's
    arguments (the classic tool-poisoning payoff). Known shapes only; fail-open.

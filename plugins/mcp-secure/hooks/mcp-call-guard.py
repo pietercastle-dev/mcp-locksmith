@@ -164,8 +164,8 @@ try:
 except Exception:
     pass
 
-if spec.get("type") in ("http", "sse") or spec.get("url"):
-    sys.exit(0)  # remote servers can't be pinned yet — don't ask about them
+if spec.get("type") == "sse":
+    sys.exit(0)  # legacy SSE transport — mcp-pin can't baseline it
 
 
 def expand(x):
@@ -178,9 +178,17 @@ def identity(n, command, args):
     return hashlib.sha256(raw.encode()).hexdigest()[:16]
 
 
-cmd = expand(spec.get("command", ""))
-args = [expand(a) for a in (spec.get("args") or [])]
+# Remote (streamable-HTTP) servers hash as (url, []) — mirrors mcp-pin spec_target.
+remote = spec.get("type") == "http" or bool(spec.get("url"))
+if remote:
+    cmd, args = expand(spec.get("url", "")), []
+else:
+    cmd, args = expand(spec.get("command", "")), [expand(a) for a in (spec.get("args") or [])]
 if identity(name, cmd, args) in pins:
+    sys.exit(0)
+if remote and not (spec.get("headers") or spec.get("headersHelper")):
+    # No local auth config → likely OAuth via Claude Code's store, which mcp-pin
+    # can't reach — don't ask for a pin that may be impossible to create.
     sys.exit(0)
 
 out("ask",

@@ -266,7 +266,7 @@ if LAUNCH:
     launched = 0
     for name, spec in all_servers:
         if spec.get("type") in ("http", "sse") or spec.get("url"):
-            tip(f"{name}: remote — launch check n/a (verify by connecting in a session)")
+            tip(f"{name}: remote — no local launch; `mcp-pin verify {name}` checks it over HTTP")
             continue
         cmd = os.path.expandvars(spec.get("command", ""))
         args = [os.path.expandvars(a) if isinstance(a, str) else a

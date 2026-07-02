@@ -96,12 +96,14 @@ class PinEnv(unittest.TestCase):
         self.pin("prune", "--yes")
         self.assertEqual(json.load(open(self.pins_file)), {})
 
-    def test_remote_server_skipped(self):
-        json.dump({"mcpServers": {"r": {"type": "http", "url": "https://x.example"}}},
+    def test_legacy_sse_server_skipped(self):
+        # streamable-HTTP coverage lives in test_pin_http.py; only the legacy
+        # SSE transport is still skipped (with an honest note).
+        json.dump({"mcpServers": {"r": {"type": "sse", "url": "http://127.0.0.1:9/x"}}},
                   open(os.path.join(self.root, ".mcp.json"), "w"))
         r = self.pin("pin")
         self.assertEqual(r.returncode, 0)
-        self.assertIn("not supported yet", r.stdout)
+        self.assertIn("legacy SSE", r.stdout)
 
     def test_tools_subcommand_prints_json(self):
         r = self.pin("tools", "--", sys.executable, FAKE)

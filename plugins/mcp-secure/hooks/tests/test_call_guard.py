@@ -119,11 +119,32 @@ class Tripwire(unittest.TestCase):
         e = Env(servers=UNPINNED, pins={pin: {"name": "srv"}})
         self.assertEqual(call("mcp__srv__do", {"q": "x"}, e), "allow")
 
-    def test_remote_and_unknown_servers_are_silent(self):
+    def test_oauth_style_remote_and_unknown_servers_are_silent(self):
+        # a remote server with NO headers/headersHelper likely authenticates via
+        # Claude Code's OAuth store — mcp-pin may not be able to pin it, so no ask
         e = Env(servers={"remote": {"type": "http", "url": "https://x.example"}},
                 pins={"deadbeef00000000": {"name": "other"}})
         self.assertEqual(call("mcp__remote__do", {"q": "x"}, e), "allow")
         self.assertEqual(call("mcp__plugin_scope_srv__do", {"q": "x"}, e), "allow")
+
+    def test_unpinned_remote_with_headers_asks(self):
+        e = Env(servers={"remote": {"type": "http", "url": "https://x.example",
+                                    "headers": {"X-Api-Key": "${KEY}"}}},
+                pins={"deadbeef00000000": {"name": "other"}})
+        self.assertEqual(call("mcp__remote__do", {"q": "x"}, e), "ask")
+
+    def test_pinned_remote_is_silent(self):
+        pin = identity("remote", "https://x.example", [])
+        e = Env(servers={"remote": {"type": "http", "url": "https://x.example",
+                                    "headers": {"X-Api-Key": "${KEY}"}}},
+                pins={pin: {"name": "remote"}})
+        self.assertEqual(call("mcp__remote__do", {"q": "x"}, e), "allow")
+
+    def test_legacy_sse_is_silent(self):
+        e = Env(servers={"remote": {"type": "sse", "url": "https://x.example",
+                                    "headers": {"X-Api-Key": "${KEY}"}}},
+                pins={"deadbeef00000000": {"name": "other"}})
+        self.assertEqual(call("mcp__remote__do", {"q": "x"}, e), "allow")
 
     def test_underscored_names_resolve_longest_match(self):
         servers = {"my_srv": {"command": "a", "args": []},

@@ -86,12 +86,19 @@ mcp-pin verify    # re-check; flags DRIFT if a server's tools changed
 mcp-pin list / unpin <name> / prune
 ```
 
-It discovers servers from `./.mcp.json` and `~/.claude.json`, reads each stdio
-server's `tools/list` over the MCP protocol, and hashes each tool's
+It discovers servers from `./.mcp.json` and `~/.claude.json`, reads each
+server's `tools/list` over the MCP protocol — stdio *and* streamable HTTP (the
+config's `headers`/`headersHelper` are honored, so a server that connects in a
+session authenticates identically here) — and hashes each tool's
 name/description/schema. Pins live at `~/.config/mcp-secret/pins.json`, keyed by
-server identity (name + command + args) — a version bump reads as "new, re-pin".
-stdio only for now. `verify` stamps `lastVerified`; the session nudge warns when
-pinned tools haven't been drift-checked in `MCP_PIN_MAX_AGE` days (default 14).
+server identity (name + command + args, or name + url) — a version bump reads as
+"new, re-pin". **Known gap, labeled honestly:** a remote server that
+authenticates via Claude Code's OAuth store can't be pinned (that token isn't
+ours to read) — `mcp-pin` says so on a 401, and the nudge/tripwire stay quiet
+about such servers instead of nagging you toward the impossible. Legacy
+`type: "sse"` servers are skipped with a note. `verify` stamps `lastVerified`;
+the session nudge warns when pinned tools haven't been drift-checked in
+`MCP_PIN_MAX_AGE` days (default 14).
 
 Version bumps go through `/mcp-secure:update`: it diffs the candidate version's
 tools against the current ones **before** the config changes (`mcp-pin tools --

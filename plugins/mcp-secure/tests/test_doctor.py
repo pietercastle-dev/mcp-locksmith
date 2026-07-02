@@ -68,7 +68,7 @@ class DoctorEnv(unittest.TestCase):
                         "--launch")
         self.assertEqual(r.returncode, 1)
         self.assertIn("config file missing", r.stdout)
-        self.assertIn("launch check n/a", r.stdout)  # remote noted, not failed
+        self.assertIn("no local launch", r.stdout)  # remote noted, not failed
 
     def test_launch_check_missing_command(self):
         r = self.doctor({"f": {"command": "/nonexistent-cmd-xyz", "args": []}}, "--launch")

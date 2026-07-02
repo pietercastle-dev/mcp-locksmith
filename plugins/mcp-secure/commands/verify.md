@@ -12,8 +12,10 @@ It auto-discovers servers wherever they live — `~/.claude.json` (user scope + 
 project) and `./.mcp.json` — so it works with or without a repo. Pins are stored
 per-user; no committed file required.
 
-How it works: `mcp-pin` launches each stdio server, speaks the MCP protocol to read
-its `tools/list`, and hashes each tool's name/description/schema.
+How it works: `mcp-pin` speaks the MCP protocol to each server — launching stdio
+servers briefly, or POSTing to streamable-HTTP ones (honoring the config's
+`headers`/`headersHelper`) — reads its `tools/list`, and hashes each tool's
+name/description/schema.
 
 Commands:
 - `mcp-pin` (or `mcp-pin verify`) — check all discovered servers against the baseline.
@@ -28,8 +30,12 @@ Run `mcp-pin verify` and interpret the output for the user:
 - **not pinned** → review the server's tools for hidden instructions, then pin it.
 - **unchanged** → all good.
 
-Notes: verifying launches each server briefly (resolving its secrets via mcp-launch),
+Notes: verifying contacts each server briefly (resolving its secrets via mcp-launch),
 so it's an on-demand check, not something that runs every session — a clean verify
 stamps `lastVerified`, and the session nudge reminds the user when pinned tools
-haven't been checked in `MCP_PIN_MAX_AGE` days (default 14). http/sse servers
-aren't supported yet (stdio only). Never print resolved secret values.
+haven't been checked in `MCP_PIN_MAX_AGE` days (default 14). The known gap: a
+remote server that authenticates via Claude Code's OAuth store can't be pinned
+(that token isn't readable from outside) — `mcp-pin` says so on a 401 rather than
+pretending; explain it as "this tool signs in with OAuth, so the drift check
+can't reach it yet". Legacy `type: "sse"` servers are skipped with a note.
+Never print resolved secret values.
