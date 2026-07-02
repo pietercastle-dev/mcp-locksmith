@@ -63,20 +63,20 @@ everything in `bin/` and `hooks/` tested in CI, releases pinnable.
    GitHub, browser, filesystem, Postgres, SQLite, fetch/search, Slack,
    notes/memory, Sentry, docs. Each vetted, exact-pinned, vet date recorded.
    Write the inclusion criteria into VETTING.md step 8.
-2. **Registry discovery in `add` (S).** No bundle match → query the official MCP
-   registry by capability, present matches with provenance signals, feed the
+2. ✅ **Registry discovery in `add` (S).** No bundle match → query the official
+   MCP registry by capability, present matches with provenance signals, feed the
    pick into the existing vetting path. Registry listing is discovery input,
    **not** trust.
-3. **`/mcp-secure:fix` + `fix-tool` skill (M).** `mcp-doctor --launch` (briefly
-   spawn stdio servers via `mcp-pin`'s client; translate exit/stderr: missing
-   runtime, bad version, auth failure) + a flow for "the Slack tool stopped
-   working": doctor chain → launch check → guided fix (reauth, unlock vault,
-   reinstall pin).
-4. **Least-privilege permissions at add time (S).** Offer a suggested
+3. ✅ **`/mcp-secure:fix` + `fix-tool` skill (M).** `mcp-doctor --launch` (briefly
+   spawns stdio servers via `mcp-pin tools`, surfaces the server's stderr) + a
+   flow for "the Slack tool stopped working": doctor chain → launch check →
+   guided fix (reauth, unlock vault, reinstall pin).
+4. ✅ **Least-privilege permissions at add time (S).** Offer a suggested
    `.claude/settings.json` block: allow read-only tools, keep write/destructive
    on `ask`. Native mechanism, no runtime policy engine.
-5. **Setup polish (S).** `setup` offers to run `install.sh` itself; no-key path
-   stays zero-config. Metric: fresh machine → working browser tool in <5 min.
+5. ✅ **Setup polish (S).** Already true: `setup` step 2 runs `install.sh` itself;
+   the no-key path is zero-config. Metric (fresh machine → working browser tool
+   in <5 min) to confirm at the v1.0 dogfood pass.
 
 ## v0.6 — Coverage & trust
 
@@ -85,9 +85,9 @@ everything in `bin/` and `hooks/` tested in CI, releases pinnable.
    detection skips. Add `tools/list` over streamable HTTP honoring
    `headers`/`headersHelper`. OAuth tokens in Claude Code's store stay a
    documented gap — honest labeling over fake coverage.
-2. **Verify staleness (S).** Pins get `lastVerified`; `check` + nudge warn past
-   `MCP_PIN_MAX_AGE` (default 14 days). No auto-verify per session (launches
-   every server).
+2. ✅ **Verify staleness (S).** Pins get `lastVerified`; the nudge warns past
+   `MCP_PIN_MAX_AGE` (default 14 days), at most once per period. No auto-verify
+   per session (launches every server).
 3. ✅ **Test the untested majority (L)** *(pulled forward into v0.4).* Fake stdio
    MCP server fixture → `mcp-pin` pin/verify/drift/unpin/prune tests; stub
    backends for `mcp-secret` (incl. `sops://` traversal-reject regression);
@@ -95,8 +95,8 @@ everything in `bin/` and `hooks/` tested in CI, releases pinnable.
    `shellcheck` in CI; ubuntu **and** macos matrix (the SOPS key-location bug
    was invisible to single-OS CI — and the suite immediately caught a second
    macOS-only bash-3.2 bug in `mcp-secret`).
-4. **State platform scope (XS).** Native Windows unsupported (WSL works) — say
-   it in README/SECURITY.md.
+4. ✅ **State platform scope (XS).** Native Windows unsupported (WSL works) —
+   stated in README + SECURITY.md.
 
 ## v1.0 — Positioning & release trust
 

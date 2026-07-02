@@ -36,6 +36,8 @@ It is **defense-in-depth, not a sandbox.** It does **not**:
   age private key aren't already in an attacker's hands.
 - **Replace your vault's security.** 1Password / Bitwarden / SOPS+age are the
   root of trust.
+- **Run on native Windows.** The helpers are bash/python and the hooks assume a
+  POSIX environment; macOS and Linux are supported, Windows via WSL only.
 
 ## Pinning & updating the plugin
 

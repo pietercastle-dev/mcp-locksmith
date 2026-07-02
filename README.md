@@ -11,7 +11,8 @@ language.
 
 ## Before you start
 
-You need **Claude Code**, plus:
+You need **Claude Code** on **macOS or Linux** (Windows via WSL — the helpers
+are bash/python scripts), plus:
 
 - **To run most tools:** Node.js (`npx`) and/or Python (`uvx`). `python3` also
   runs the secret-leak guard hook — without it, that guard silently won't run.
@@ -41,6 +42,7 @@ matching flow runs automatically.
 | `/mcp-secure:setup` | **Start here** — guided first-time setup |
 | `/mcp-secure:add` | Add a tool to this project — ready-made, or safety-checked first |
 | `/mcp-secure:update` | Update tools — preview what a new version changes before taking it |
+| `/mcp-secure:fix` | Diagnose and fix a tool that isn't working |
 | `/mcp-secure:remove` | Remove a tool and revoke its key |
 | `/mcp-secure:audit` | Review tools you **already** had and bring them into the safe setup |
 | `/mcp-secure:check` | One health check — secrets resolve, no tool changed since approval |

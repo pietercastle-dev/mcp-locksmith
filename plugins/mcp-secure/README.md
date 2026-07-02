@@ -15,11 +15,11 @@ against the common leak vectors.
 |-----------|---------|
 | `bin/mcp-secret` | Resolves a secret *reference* to plaintext from 1Password / SOPS / Bitwarden. |
 | `bin/mcp-launch` | Generic launcher: injects resolved secrets into a server at spawn (env or CLI flag), then execs it. |
-| `bin/mcp-doctor` | Health-checks the chain: backend auth + every config reference resolves. |
+| `bin/mcp-doctor` | Health-checks the chain: backend auth + every config reference resolves. `--launch` also spawns each stdio server and reports (with its stderr) whether it starts and speaks MCP. |
 | `bin/mcp-pin` | Pins each server's tool definitions and detects drift (rug-pull defense). |
 | `bin/mcp-bundles` | Lists bundle dirs (shipped + private) for `/mcp-secure:add`. |
-| `commands/` | `setup`, `add`, `update`, `remove`, `audit`, `always-on`, `check`, `verify` (see the top README's table). |
-| `skills/` | `add-tool` / `update-tool` / `remove-tool` / `audit-tools` — route plain-language requests to the commands. |
+| `commands/` | `setup`, `add`, `update`, `fix`, `remove`, `audit`, `always-on`, `check`, `verify` (see the top README's table). |
+| `skills/` | `add-tool` / `update-tool` / `fix-tool` / `remove-tool` / `audit-tools` — route plain-language requests to the commands. |
 | `hooks/` | Config guard (blocks literal secrets, confirms global scope), call guard (asks on credential-shaped values in outbound tool calls + first use of an unpinned server), session nudge. |
 | `bundles/` | Vetted, ready-to-add server sets. Private bundles: `~/.config/mcp-secret/bundles/`. |
 | `VETTING.md` / `BACKENDS.md` / `ORG.md` | Vetting checklist / backend setup / optional team config. |
@@ -90,7 +90,8 @@ It discovers servers from `./.mcp.json` and `~/.claude.json`, reads each stdio
 server's `tools/list` over the MCP protocol, and hashes each tool's
 name/description/schema. Pins live at `~/.config/mcp-secret/pins.json`, keyed by
 server identity (name + command + args) — a version bump reads as "new, re-pin".
-stdio only for now.
+stdio only for now. `verify` stamps `lastVerified`; the session nudge warns when
+pinned tools haven't been drift-checked in `MCP_PIN_MAX_AGE` days (default 14).
 
 Version bumps go through `/mcp-secure:update`: it diffs the candidate version's
 tools against the current ones **before** the config changes (`mcp-pin tools --

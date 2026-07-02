@@ -15,6 +15,7 @@ import json
 import os
 import re
 import sys
+import time
 
 try:
     data = json.load(sys.stdin)
@@ -87,13 +88,19 @@ if not servers:
          "adds a tool to this repo — a ready-made bundle, or a brand-new one it "
          "safety-checks first.")
 
-# --- servers EXIST: nudge to adopt them, at most once per project ---
+# --- servers EXIST: nudge about adoption/staleness, at most once per
+# MCP_PIN_MAX_AGE days per project (marker holds the last-nudge timestamp) ---
+MAX_AGE_DAYS = float(os.environ.get("MCP_PIN_MAX_AGE", "14"))
+now = time.time()
 SEEN = os.path.expanduser("~/.config/mcp-secret/nudge-seen.json")
 try:
     seen = json.load(open(SEEN))
 except Exception:
     seen = {}
-if seen.get(cwd):
+last = seen.get(cwd)
+if last is True:
+    last = 0  # legacy boolean marker — eligible for the time-based policy
+if isinstance(last, (int, float)) and now - last < MAX_AGE_DAYS * 86400:
     sys.exit(0)
 
 # A literal credential already sitting in config (mirrors mcp-guard.py shapes).
@@ -128,21 +135,36 @@ def identity(name, command, args):
     return hashlib.sha256(raw.encode()).hexdigest()[:16]
 
 
-unpinned = []
+def pin_age_days(pin):
+    ts = pin.get("lastVerified") or pin.get("pinnedAt")
+    try:
+        return (now - time.mktime(time.strptime(ts, "%Y-%m-%dT%H:%M:%S"))) / 86400
+    except Exception:
+        return None
+
+
+unpinned, stale = [], []
 for n, s in servers.items():
     if not isinstance(s, dict):
         continue
+    if s.get("type") in ("http", "sse") or s.get("url"):
+        continue  # remote servers can't be pinned yet
     cmd = expand(s.get("command", "")); args = [expand(a) for a in (s.get("args") or [])]
-    if identity(n, cmd, args) not in pins:
+    pin = pins.get(identity(n, cmd, args))
+    if not pin:
         unpinned.append(n)
+    else:
+        age = pin_age_days(pin)
+        if age is not None and age > MAX_AGE_DAYS:
+            stale.append(n)
 
-if not (inline or unpinned):
-    sys.exit(0)  # everything already adopted — stay silent
+if not (inline or unpinned or stale):
+    sys.exit(0)  # adopted and fresh — stay silent
 
-# Record so we don't nudge this project again.
+# Record so we don't nudge this project again for MAX_AGE_DAYS.
 try:
     os.makedirs(os.path.dirname(SEEN), exist_ok=True)
-    seen[cwd] = True
+    seen[cwd] = now
     json.dump(seen, open(SEEN, "w"))
 except Exception:
     pass
@@ -153,7 +175,10 @@ if inline:
 if unpinned:
     n = len(unpinned)
     parts.append(("1 isn't" if n == 1 else f"{n} aren't") + " pinned/adopted yet")
-emit("This project already has MCP tools that mcp-secure hasn't adopted — "
-     + "; ".join(parts) + ". Installing the plugin doesn't change pre-existing tools on "
-     "its own. Briefly let the user know and offer to run /mcp-secure:audit — it moves "
-     "any plaintext secret into their vault and pins the tools. Offer once; don't push.")
+if stale:
+    parts.append(f"{len(stale)} haven't been drift-checked in over {int(MAX_AGE_DAYS)} days")
+suggest = "/mcp-secure:audit — it moves any plaintext secret into their vault and pins " \
+          "the tools" if (inline or unpinned) else \
+          "/mcp-secure:check — it re-verifies the pinned tools haven't changed"
+emit("This project has MCP tools needing attention — " + "; ".join(parts) + ". "
+     "Briefly let the user know and offer to run " + suggest + ". Offer once; don't push.")

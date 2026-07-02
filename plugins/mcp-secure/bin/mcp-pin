@@ -35,6 +35,7 @@ import os
 import queue
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 
@@ -112,10 +113,21 @@ def list_tools(spec):
     for k, v in (spec.get("env") or {}).items():
         env[k] = expand(v)
 
+    # Capture stderr (to a temp file — no pipe-deadlock risk) so a failure can
+    # say WHY: npx fetch errors, missing runtimes, mcp-launch resolve failures.
+    errf = tempfile.TemporaryFile(mode="w+", errors="replace")
     proc = subprocess.Popen([command] + args, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                            stderr=subprocess.DEVNULL, text=True, env=env)
+                            stderr=errf, text=True, env=env)
     deadline = time.time() + TIMEOUT
     q = queue.Queue()
+
+    def err_tail():
+        try:
+            errf.seek(0)
+            lines = [ln.strip() for ln in errf.read().splitlines() if ln.strip()]
+            return (" — server stderr: " + " | ".join(lines[-3:])) if lines else ""
+        except Exception:
+            return ""
 
     def reader():
         try:
@@ -133,13 +145,13 @@ def list_tools(spec):
         while True:
             remaining = deadline - time.time()
             if remaining <= 0:
-                raise RuntimeError("timeout")
+                raise RuntimeError("timeout" + err_tail())
             try:
                 line = q.get(timeout=remaining)
             except queue.Empty:
-                raise RuntimeError("timeout")
+                raise RuntimeError("timeout" + err_tail())
             if line is None:
-                raise RuntimeError("server closed stdout / exited")
+                raise RuntimeError("server closed stdout / exited" + err_tail())
             line = line.strip()
             if not line:
                 continue
@@ -179,6 +191,10 @@ def list_tools(spec):
                 proc.kill()
             except Exception:
                 pass
+        try:
+            errf.close()
+        except Exception:
+            pass
 
 
 def current_hashes(spec):
@@ -225,6 +241,7 @@ def cmd_verify(names):
         warn("no matching servers found"); return 0
     head("verifying")
     fails = unpinned = 0
+    dirty = False
     for n, s in sel.items():
         if is_remote(s):
             info(f"{n}: http/sse not supported yet — skipped"); continue
@@ -242,11 +259,16 @@ def cmd_verify(names):
         changed = sorted(t for t in cur if t in old and cur[t] != old[t])
         if not (added or removed or changed):
             ok(f"{n}: unchanged ({len(cur)} tools)")
+            # freshness marker — the nudge warns when this goes stale
+            pin["lastVerified"] = time.strftime("%Y-%m-%dT%H:%M:%S")
+            dirty = True
         else:
             bad(f"{n}: DRIFT — changed={changed} added={added} removed={removed}")
             bad(f"      a tool changed since you approved it (possible rug-pull). "
                 f"Re-vet, then `mcp-pin pin {n}`.")
             fails += 1
+    if dirty:
+        save_pins(pins)
     head("summary")
     if fails:
         print(f"  {R}{fails} server(s) drifted/failed{X}")
@@ -263,7 +285,8 @@ def cmd_list(_names):
     if not pins:
         info("none yet — run `mcp-pin pin`"); return 0
     for v in sorted(pins.values(), key=lambda x: x.get("name", "")):
-        ok(f"{v.get('name')}: {len(v.get('tools') or {})} tool(s)  (pinned {v.get('pinnedAt', '?')})")
+        ok(f"{v.get('name')}: {len(v.get('tools') or {})} tool(s)  "
+           f"(pinned {v.get('pinnedAt', '?')}, last verified {v.get('lastVerified', 'never')})")
     return 0
 
 

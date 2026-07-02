@@ -40,4 +40,8 @@ Fold the result into the same verdict:
 - **not pinned** → mention they can pin approved tools so future checks catch changes.
 - **unchanged** → just roll it into "everything's healthy".
 
+If something is actually **broken** (a tool won't start, errors, won't connect),
+switch to the fix flow: `/mcp-secure:fix` — `mcp-doctor --launch` spawns each
+stdio tool briefly and surfaces the server's own error output.
+
 Never print resolved secret values; both helpers already keep them out of output.

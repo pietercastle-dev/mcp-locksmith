@@ -61,6 +61,22 @@ root). Do not skip the checks — the point of this path is that vetting is a st
 a vibe. The server to add is in `$ARGUMENTS` (a name, package, or URL); if you got
 here from an empty argument, ask what they want.
 
+**Capability, not a package?** If the user named a *need* ("something for Jira")
+rather than a specific server, discover candidates in the official MCP registry:
+
+```sh
+curl -s 'https://registry.modelcontextprotocol.io/v0/servers?search=<term>&limit=5'
+```
+
+Each result has `server.name`, `description`, `repository.url`, `version`, and
+either `packages` (local) or `remotes` (hosted). Present the plausible matches
+with their provenance (who publishes it, official vs third-party — the registry
+hosts both, plus rehosted proxies like smithery). **A registry listing is
+discovery input, NOT trust** — the user picks one, then the full checklist below
+still runs on it. Prefer first-party servers over rehosted proxies (a proxy adds
+a middleman to your data path). If the registry has nothing good, fall back to
+web search.
+
 Work through the checklist, doing real research — don't assume:
 
 1. **Auth model first.** Check whether the server supports OAuth / remote auth. If it does, prefer that — Claude Code handles the flow and stores the token itself, so there's **no static secret at all**. Only fall back to a token if OAuth isn't available.
@@ -82,6 +98,11 @@ Work through the checklist, doing real research — don't assume:
 7. **Present findings plainly** — a short, everyday-language summary (who makes it, is it trustworthy, what it can do, does it need a key) plus what you're about to add — and get explicit approval before writing.
 8. **Write** — merge into the **current repo's** `.mcp.json` at project scope only. Never `~/.claude.json`, never user scope. Then tell the user to restart the session to approve it.
 9. **Pin it** — after the server is approved and reachable, run `mcp-pin pin <name>` to record its tool baseline. This is the rug-pull defense: a later `mcp-pin verify` (`/mcp-secure:verify`) will flag if the server changes its tools after approval.
+10. **Offer least-privilege permissions** (optional, both paths). You enumerated the tools in step 4 — offer to pre-approve just the clearly read-only ones in the project's `.claude/settings.json`, so routine reads don't prompt while write/destructive tools still ask:
+   ```json
+   { "permissions": { "allow": ["mcp__<server>__<read_only_tool>", "…"] } }
+   ```
+   Merge with any existing settings (never clobber), only with explicit approval, and when in doubt about a tool leave it prompting. This uses Claude Code's native permission system — don't invent another layer.
 
 If the server is broadly reusable, offer to also save it as a bundle in the plugin's `bundles/` dir (references only, never literal secrets) — then it becomes a ready-made tool for next time. If it's a team always-on server, point them at `/mcp-secure:always-on`.
 

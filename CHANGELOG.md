@@ -45,7 +45,29 @@ plugin's `.claude-plugin/plugin.json`.
   6 suites). CI now runs on **ubuntu and macos** (two shipped bugs were
   macOS-only) and adds `shellcheck`.
 
+- **`/mcp-secure:fix` + `fix-tool` skill + `mcp-doctor --launch`** — the
+  troubleshooting flow ("the Slack tool stopped working"). `--launch` spawns
+  each stdio server briefly (via `mcp-pin tools`) and reports whether it starts
+  and speaks MCP — including the server's own stderr, which `mcp-pin` now
+  captures on launch failures (so "server closed stdout" becomes "missing
+  FOO_TOKEN"). The fix flow maps the common failures (backend unauthed, bad
+  ref, missing runtime, yanked version, expired OAuth) to their fixes.
+- **Verify staleness.** `mcp-pin verify` stamps `lastVerified` on unchanged
+  pins (`list` shows it), and the session nudge warns — at most once per
+  `MCP_PIN_MAX_AGE` days (default 14) per project — when pinned tools haven't
+  been drift-checked in that long. Remote servers no longer counted as
+  "unpinned" by the nudge (they can't be pinned yet).
+- **Registry discovery in `add`.** A capability request ("something for Jira")
+  now searches the official MCP registry and presents candidates with
+  provenance; a listing is discovery input, **not** trust — full vetting still
+  runs. Prefers first-party servers over rehosted proxies.
+- **Least-privilege permissions offer in `add`.** After pinning, the flow can
+  pre-approve just the read-only tools in the project's `.claude/settings.json`
+  (native permission system; write/destructive tools keep prompting).
+
 ### Fixed
+- **`mcp-doctor` NameError on the no-config path** — it called an undefined
+  `info()` when no MCP config files were found.
 - **`mcp-secret` fragment-less sops ref crash on macOS** (found by the new
   tests): `sops://file` with no `#/key` fragment died with an unhelpful
   `parts[@]: unbound variable` under bash 3.2 (macOS default) instead of the

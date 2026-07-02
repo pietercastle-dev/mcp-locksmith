@@ -79,9 +79,32 @@ class Nudge(unittest.TestCase):
         msg = e.run()
         self.assertIn("pinned", msg)
 
-    def test_clean_and_pinned_is_silent(self):
-        pins = {identity("s", "srv", ["--x"]): {"name": "s"}}
+    def test_clean_and_freshly_pinned_is_silent(self):
+        import time
+        fresh = time.strftime("%Y-%m-%dT%H:%M:%S")
+        pins = {identity("s", "srv", ["--x"]): {"name": "s", "pinnedAt": fresh}}
         e = Env(servers={"s": {"command": "srv", "args": ["--x"]}}, pins=pins)
+        self.assertIsNone(e.run())
+
+    def test_stale_pin_nudges_check(self):
+        pins = {identity("s", "srv", ["--x"]):
+                {"name": "s", "pinnedAt": "2026-01-01T00:00:00"}}
+        e = Env(servers={"s": {"command": "srv", "args": ["--x"]}}, pins=pins)
+        msg = e.run()
+        self.assertIn("drift-checked", msg)
+        self.assertIn("check", msg)
+        self.assertIsNone(e.run())  # marker gates the re-nudge
+
+    def test_fresh_verify_beats_old_pin(self):
+        import time
+        fresh = time.strftime("%Y-%m-%dT%H:%M:%S")
+        pins = {identity("s", "srv", ["--x"]):
+                {"name": "s", "pinnedAt": "2026-01-01T00:00:00", "lastVerified": fresh}}
+        e = Env(servers={"s": {"command": "srv", "args": ["--x"]}}, pins=pins)
+        self.assertIsNone(e.run())
+
+    def test_remote_server_not_counted_unpinned(self):
+        e = Env(servers={"r": {"type": "http", "url": "https://x.example"}})
         self.assertIsNone(e.run())
 
 

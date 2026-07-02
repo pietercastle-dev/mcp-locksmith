@@ -9,8 +9,11 @@ Verifies, for the current setup:
 References are resolved by calling mcp-secret; this NEVER prints secret values —
 only the reference and pass/fail. Exits non-zero if anything fails.
 
-Usage: mcp-doctor [config.json ...]
+Usage: mcp-doctor [--launch] [config.json ...]
   Defaults to ./.mcp.json and ~/.claude.json when no paths are given.
+  --launch additionally spawns each stdio server briefly (via `mcp-pin tools`)
+  and reports whether it starts and speaks MCP — with the server's own stderr
+  when it doesn't. The troubleshooting mode /mcp-secure:fix uses.
 """
 import json
 import os
@@ -24,6 +27,7 @@ def ok(m):   print(f"  {G}✔{X} {m}")
 def bad(m):  print(f"  {R}✘{X} {m}")
 def warn(m): print(f"  {Y}!{X} {m}")
 def tip(m):  print(f"  {B}i{X} {m}")
+def info(m): print(f"  {B}i{X} {m}")
 def head(m): print(f"\n{B}=={X} {m}")
 
 fails = 0
@@ -206,10 +210,14 @@ def refs_from_server(spec):
     return refs
 
 
-paths = sys.argv[1:] or [p for p in ["./.mcp.json", os.path.expanduser("~/.claude.json")] if os.path.exists(p)]
+argv = sys.argv[1:]
+LAUNCH = "--launch" in argv
+argv = [a for a in argv if a != "--launch"]
+paths = argv or [p for p in ["./.mcp.json", os.path.expanduser("~/.claude.json")] if os.path.exists(p)]
 
 collected = []
 inline_found = []
+all_servers = []
 for p in paths:
     try:
         data = json.load(open(p))
@@ -217,6 +225,7 @@ for p in paths:
         warn(f"skip {p}: {e}"); continue
     for name, spec in (data.get("mcpServers") or {}).items():
         if isinstance(spec, dict):
+            all_servers.append((name, spec))
             for ref in refs_from_server(spec):
                 collected.append((name, ref))
             for where in inline_secrets(spec):
@@ -249,10 +258,56 @@ else:
         else:
             bad(f"{name}: {ref} — {r.stderr.strip() or 'empty/failed'}"); fails += 1
 
+# --- optional: actually launch each stdio server and speak MCP to it ---
+if LAUNCH:
+    head("server launch")
+    ANSI = re.compile(r"\033\[[0-9;]*m")
+    mcp_pin = os.path.join(here, "mcp-pin")
+    launched = 0
+    for name, spec in all_servers:
+        if spec.get("type") in ("http", "sse") or spec.get("url"):
+            tip(f"{name}: remote — launch check n/a (verify by connecting in a session)")
+            continue
+        cmd = os.path.expandvars(spec.get("command", ""))
+        args = [os.path.expandvars(a) if isinstance(a, str) else a
+                for a in (spec.get("args") or [])]
+        if not cmd:
+            bad(f"{name}: no command in config"); fails += 1
+            continue
+        launched += 1
+        env = dict(os.environ)
+        for k, v in (spec.get("env") or {}).items():
+            env[k] = os.path.expandvars(v) if isinstance(v, str) else v
+        try:
+            r = subprocess.run([sys.executable, mcp_pin, "tools", "--", cmd] + args,
+                               capture_output=True, text=True, env=env, timeout=60)
+        except subprocess.TimeoutExpired:
+            bad(f"{name}: did not respond within 60s"); fails += 1
+            continue
+        if r.returncode == 0:
+            try:
+                ok(f"{name}: launches and speaks MCP ({len(json.loads(r.stdout))} tools)")
+            except Exception:
+                ok(f"{name}: launches and speaks MCP")
+        else:
+            msg = ANSI.sub("", (r.stdout + r.stderr).strip()).splitlines()
+            bad(f"{name}: {msg[-1].strip() if msg else 'failed to launch'}"); fails += 1
+            low = " ".join(msg).lower()
+            if "no such file" in low or "not found" in low:
+                tip("the command isn't installed/on PATH — is its runtime (node/npx, uvx) present?")
+            if "unresolved ${" in low:
+                tip("config uses ${…} the shell can't expand here — plugin-scope server?")
+            if "failed to resolve" in low:
+                tip("a secret reference didn't resolve — run the checks above / see BACKENDS.md")
+    if launched == 0:
+        info("no stdio servers to launch")
+
 head("summary")
 if fails == 0:
     print(f"  {G}all good{X}")
-    tip("run `mcp-pin verify` to check tools haven't changed since you approved them")
+    if not LAUNCH:
+        tip("deeper checks: `mcp-doctor --launch` spawns each tool briefly to prove it starts;")
+        tip("`mcp-pin verify` checks tools haven't changed since you approved them")
     sys.exit(0)
 print(f"  {R}{fails} problem(s){X}")
 sys.exit(1)

@@ -114,6 +114,21 @@ class PinEnv(unittest.TestCase):
         r = self.pin("tools", "--", "/nonexistent-cmd-xyz")
         self.assertEqual(r.returncode, 1)
 
+    def test_verify_records_last_verified(self):
+        self.write_config()
+        self.pin("pin")
+        pins = json.load(open(self.pins_file))
+        self.assertNotIn("lastVerified", list(pins.values())[0])
+        self.pin("verify")
+        pins = json.load(open(self.pins_file))
+        self.assertIn("lastVerified", list(pins.values())[0])
+
+    def test_crash_error_includes_server_stderr(self):
+        self.write_config(env={"FAKE_DIE": "boom: missing FOO_TOKEN"})
+        r = self.pin("verify")
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("boom: missing FOO_TOKEN", r.stdout)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

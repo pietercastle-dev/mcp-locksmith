@@ -6,10 +6,15 @@ server's command/args (mcp-pin's identity hashes name+command+args, so only an
 env-driven change reads as the same server whose tools moved — a rug-pull):
   FAKE_TOOLS  comma-separated tool names          (default "hello")
   FAKE_DESC   description prefix for every tool   (default "does")
+  FAKE_DIE    if set, print it to stderr and exit 1 immediately (crash sim)
 """
 import json
 import os
 import sys
+
+if os.environ.get("FAKE_DIE"):
+    print(os.environ["FAKE_DIE"], file=sys.stderr)
+    sys.exit(1)
 
 TOOLS = [{"name": n, "description": f"{os.environ.get('FAKE_DESC', 'does')} {n}",
           "inputSchema": {"type": "object"}}
