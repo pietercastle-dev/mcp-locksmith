@@ -44,10 +44,11 @@ except Exception:
 tool = data.get("tool_name", "")
 ti = data.get("tool_input") or {}
 
-# Key names that mark a value as a credential.
+# Key names that mark a value as a credential (also matched against header names,
+# so AUTHORIZATION/COOKIE are here even though they're headers, not env keys).
 SECRET_KEY = re.compile(
     r"(TOKEN|SECRET|PASSWORD|PASSWD|APIKEY|API_KEY|ACCESS_KEY|PRIVATE_KEY|"
-    r"CREDENTIAL|CLIENT_SECRET|\bKEY\b|\bPAT\b)", re.I)
+    r"CREDENTIAL|CLIENT_SECRET|AUTHORIZATION|\bCOOKIE\b|\bKEY\b|\bPAT\b)", re.I)
 # Values that are obviously credentials regardless of key name or position.
 SECRET_VAL = re.compile(
     r"(ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|"
@@ -58,8 +59,11 @@ SECRET_VAL = re.compile(
     r"[a-z][a-z0-9+.\-]*://[^/?#@\s:]+:[^/?#@\s]+@)")        # creds in a URL/DSN
 # NOTE: deliberately NOT matching bare high-entropy hex — git SHAs and content
 # hashes legitimately appear in configs and would be false positives.
-# Forms that are SAFE: env expansion, a bare $VAR, or an mcp-secret reference.
-SAFE_VAL = re.compile(r"^\s*(\$\{[^}]+\}|\$[A-Za-z_]\w*|op://|sops://|bw://)")
+# Forms that are SAFE: env expansion, a bare $VAR, or an mcp-secret reference —
+# optionally behind an auth scheme, so `Bearer ${TOKEN}` reads as safe too.
+SAFE_VAL = re.compile(
+    r"^\s*(?:(?:Bearer|Basic|Token)\s+)?(\$\{[^}]+\}|\$[A-Za-z_]\w*|op://|sops://|bw://)",
+    re.I)
 # Basenames that identify an MCP config file written via the shell.
 CONFIG_BASENAMES = (".mcp.json", ".claude.json")
 
@@ -146,6 +150,17 @@ if tool == "Bash":
             k, v = m.group(1), m.group(2).strip("'\"")
             if looks_secret(k, v):
                 out("deny", "Blocked: literal secret in `claude mcp add -e`. " + WRAPPER_HINT)
+        # `--header/-H "Name: value"` on http/sse adds — an opaque bearer/API-key
+        # value has no recognizable token shape, so anchor on the header name.
+        for m in re.finditer(
+                r"(?:-H|--header)[=\s]+('[^']*'|\"[^\"]*\"|[^\s]+)", cmd):
+            name, sep, val = m.group(1).strip("'\"").partition(":")
+            if sep and looks_secret(name.strip(), val.strip()):
+                out("deny",
+                    "Blocked: literal secret in `--header`. For a remote server "
+                    "prefer OAuth (no static secret at all); if a header is "
+                    "required, resolve it at connect time via a headersHelper + "
+                    "mcp-secret instead of a stored value. See the mcp-secure README.")
         # Value-shaped secrets anywhere: add-json payloads, heredocs, redirects, tee.
         what = find_secret(cmd)
         if what:

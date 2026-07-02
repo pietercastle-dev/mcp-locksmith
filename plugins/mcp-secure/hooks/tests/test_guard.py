@@ -44,6 +44,15 @@ CASES = [
     (".mcp.json escaped-quote secret",  {"tool_name": "Write", "tool_input": {"file_path": "/x/.mcp.json", "content": '{"env":{"X":"ab\\"cd ghp_EXAMPLEONLYnotarealtoken00"}}'}}, "deny"),
     # `claude mcp import` with an inline secret (process substitution)
     ("Bash: mcp import inline secret",  {"tool_name": "Bash", "tool_input": {"command": IMP + " <(printf '{\"x\":\"ghp_EXAMPLEONLYnotarealtoken00\"}')"}}, "deny"),
+    # --header on http adds: opaque bearer/API-key values have no token shape,
+    # so the guard anchors on the header name
+    ("Bash: add --header opaque bearer", {"tool_name": "Bash", "tool_input": {"command": f"{A} --transport http foo https://x.example --header 'Authorization: Bearer notarealopaquetokenvalue00'"}}, "deny"),
+    ("Bash: add -H opaque api key",      {"tool_name": "Bash", "tool_input": {"command": f"{A} --transport http foo https://x.example -H 'X-Api-Key: notarealopaquekey00'"}}, "deny"),
+    ("Bash: add --header ${VAR} (safe)", {"tool_name": "Bash", "tool_input": {"command": f"{A} --transport http foo https://x.example --header 'Authorization: Bearer ${{API_TOKEN}}'"}}, "allow"),
+    ("Bash: add --header non-auth (safe)", {"tool_name": "Bash", "tool_input": {"command": f"{A} --transport http foo https://x.example --header 'Content-Type: application/json'"}}, "allow"),
+    # stored auth header in a Write (structural scan anchors on the header name)
+    (".mcp.json headers opaque bearer", {"tool_name": "Write", "tool_input": {"file_path": "/x/.mcp.json", "content": '{"mcpServers":{"s":{"type":"http","url":"https://x.example","headers":{"Authorization":"Bearer notarealopaquetokenvalue00"}}}}'}}, "deny"),
+    (".mcp.json headers ${VAR} (safe)", {"tool_name": "Write", "tool_input": {"file_path": "/x/.mcp.json", "content": '{"mcpServers":{"s":{"type":"http","url":"https://x.example","headers":{"Authorization":"Bearer ${API_TOKEN}"}}}}'}}, "allow"),
 ]
 
 

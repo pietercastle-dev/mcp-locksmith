@@ -18,8 +18,8 @@ against the common leak vectors.
 | `bin/mcp-doctor` | Health-checks the chain: backend auth + every config reference resolves. |
 | `bin/mcp-pin` | Pins each server's tool definitions and detects drift (rug-pull defense). |
 | `bin/mcp-bundles` | Lists bundle dirs (shipped + private) for `/mcp-secure:add`. |
-| `commands/` | `setup`, `add`, `remove`, `audit`, `always-on`, `check`, `verify` (see the top README's table). |
-| `skills/` | `add-tool` / `remove-tool` / `audit-tools` — route plain-language requests to the commands. |
+| `commands/` | `setup`, `add`, `update`, `remove`, `audit`, `always-on`, `check`, `verify` (see the top README's table). |
+| `skills/` | `add-tool` / `update-tool` / `remove-tool` / `audit-tools` — route plain-language requests to the commands. |
 | `hooks/` | Guard (blocks literal secrets, confirms global scope) + session nudge. |
 | `bundles/` | Vetted, ready-to-add server sets. Private bundles: `~/.config/mcp-secret/bundles/`. |
 | `VETTING.md` / `BACKENDS.md` / `ORG.md` | Vetting checklist / backend setup / optional team config. |
@@ -91,6 +91,10 @@ server's `tools/list` over the MCP protocol, and hashes each tool's
 name/description/schema. Pins live at `~/.config/mcp-secret/pins.json`, keyed by
 server identity (name + command + args) — a version bump reads as "new, re-pin".
 stdio only for now.
+
+Version bumps go through `/mcp-secure:update`: it diffs the candidate version's
+tools against the current ones **before** the config changes (`mcp-pin tools --
+<command>…` is the plumbing), re-vets what changed, then re-pins.
 
 ## Optional: install-time firewall
 

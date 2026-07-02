@@ -144,7 +144,9 @@ _SECRET_VAL = re.compile(
     r"AKIA[0-9A-Z]{16}|eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}|"
     r"AIza[0-9A-Za-z_\-]{30,}|-----BEGIN[ A-Z]*PRIVATE KEY-----|"
     r"[a-z][a-z0-9+.\-]*://[^/?#@\s:]+:[^/?#@\s]+@)")
-_SAFE_VAL = re.compile(r"^\s*(\$\{[^}]+\}|\$[A-Za-z_]\w*|op://|sops://|bw://)")
+_SAFE_VAL = re.compile(
+    r"^\s*(?:(?:Bearer|Basic|Token)\s+)?(\$\{[^}]+\}|\$[A-Za-z_]\w*|op://|sops://|bw://)",
+    re.I)
 
 
 def _looks_secret(key, val):
@@ -168,6 +170,10 @@ def inline_secrets(spec):
     for k, v in (spec.get("env") or {}).items():
         if _looks_secret(k, v):
             hits.append(f"env.{k}")
+    # http/sse servers: a stored auth header is a literal secret too.
+    for k, v in (spec.get("headers") or {}).items():
+        if _looks_secret(k, v):
+            hits.append(f"headers.{k}")
     for i, a in enumerate(spec.get("args") or []):
         if isinstance(a, str) and _SECRET_VAL.search(a):
             hits.append(f"args[{i}]")

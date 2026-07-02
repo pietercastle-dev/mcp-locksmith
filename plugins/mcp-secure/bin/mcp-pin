@@ -21,6 +21,10 @@ Usage:
   mcp-pin list            show what's pinned
   mcp-pin unpin <name…>   drop the baseline for a server you removed
   mcp-pin prune [--yes]   drop pins with no matching server here (dry-run w/o --yes)
+  mcp-pin tools -- <command> [args…]
+                          plumbing: launch a command and print its MCP tool list
+                          as JSON — lets /mcp-secure:update diff a candidate
+                          version's tools against the current one before adopting
 
 stdio servers only for now; http/sse are skipped with a note. Exit non-zero if
 any server drifts from its pin or fails to verify.
@@ -306,13 +310,27 @@ def cmd_prune(names):
     return 0
 
 
+def cmd_tools(argv):
+    """Plumbing: print an arbitrary command's tool list as JSON on stdout."""
+    if argv and argv[0] == "--":
+        argv = argv[1:]
+    if not argv:
+        warn("usage: mcp-pin tools -- <command> [args…]"); return 2
+    try:
+        tools = list_tools({"command": argv[0], "args": argv[1:]})
+    except Exception as e:
+        bad(f"cannot list tools: {e}"); return 1
+    print(json.dumps(tools, indent=2, sort_keys=True))
+    return 0
+
+
 def main():
     argv = sys.argv[1:]
     cmd = "verify"
-    if argv and argv[0] in ("pin", "verify", "list", "unpin", "prune"):
+    if argv and argv[0] in ("pin", "verify", "list", "unpin", "prune", "tools"):
         cmd = argv.pop(0)
     return {"pin": cmd_pin, "verify": cmd_verify, "list": cmd_list,
-            "unpin": cmd_unpin, "prune": cmd_prune}[cmd](argv)
+            "unpin": cmd_unpin, "prune": cmd_prune, "tools": cmd_tools}[cmd](argv)
 
 
 if __name__ == "__main__":

@@ -29,7 +29,7 @@ everything in `bin/` and `hooks/` tested in CI, releases pinnable.
 
 ## v0.4 — Lifecycle & runtime guard
 
-1. **`/mcp-secure:update` + `update-tool` skill (L).** "Dependabot for MCP
+1. ✅ **`/mcp-secure:update` + `update-tool` skill (L).** "Dependabot for MCP
    servers" — vetting pins a version, then nothing ever moves it. Discover
    versioned specs (`npx pkg@x`, `uvx pkg==x`, incl. inside `mcp-launch … --`),
    check npm/PyPI for latest, **launch the candidate in isolation and diff its
@@ -49,8 +49,8 @@ everything in `bin/` and `hooks/` tested in CI, releases pinnable.
      unpinned. Gated: only fires if the user has ≥1 pin or org
      `policy.requireVetting` is set — never nags non-adopters. (First advisory
      consumer of `policy.requireVetting`.)
-   - **Guard gap:** `claude mcp add --header "Authorization: Bearer <opaque>"`
-     evades both the `-e` regex and known token shapes — add a header check.
+   - ✅ **Guard gap:** `claude mcp add --header "Authorization: Bearer <opaque>"`
+     evaded both the `-e` regex and known token shapes — header check added.
    - Tests in CI; SECURITY.md/README gain the runtime layer.
    *Acceptance:* <50ms per call; a dogfood session yields zero unwarranted asks.
 

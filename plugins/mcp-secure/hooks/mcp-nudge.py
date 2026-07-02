@@ -105,7 +105,8 @@ SECRET_VAL = re.compile(
 
 
 def has_inline_secret(s):
-    vals = list((s.get("env") or {}).values()) + list(s.get("args") or [])
+    vals = (list((s.get("env") or {}).values()) + list(s.get("args") or [])
+            + list((s.get("headers") or {}).values()))
     return any(isinstance(v, str) and SECRET_VAL.search(v) for v in vals)
 
 

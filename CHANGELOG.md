@@ -6,8 +6,31 @@ plugin's `.claude-plugin/plugin.json`.
 
 ## [Unreleased]
 
-_Planned: org-config gateway routing (point-at only) + policy surfacing — deferred
-until there's a real gateway to design against. See [ROADMAP.md](ROADMAP.md)._
+### Added
+- **`/mcp-secure:update` + `update-tool` skill** — "Dependabot for your MCP
+  servers", closing the lifecycle gap where vetting pins a version and nothing
+  ever moves it. Discovers versioned specs (incl. inside `mcp-launch … --`),
+  checks npm/PyPI for newer versions, **previews the candidate's tool diff
+  before any config changes** (added/changed descriptions get the
+  tool-poisoning read), then bumps the version and re-pins. Unpinned `npx -y`
+  servers get flagged and offered pinning; remote servers are noted as
+  updating server-side.
+- **`mcp-pin tools -- <command> [args…]`** — plumbing that launches an
+  arbitrary command and prints its MCP tool list as JSON; what the update flow
+  uses to diff a candidate version against the current one.
+
+### Security
+- **Guard covers `--header`.** `claude mcp add --transport http --header
+  "Authorization: Bearer <token>"` previously slipped through — the `-e/--env`
+  check didn't match headers, and an opaque token has no recognizable shape.
+  The guard now anchors on auth-ish header names (Authorization, Cookie,
+  X-Api-Key, …) in both the Bash path and stored `headers` objects in
+  Write/Edit; `Bearer ${VAR}` and reference forms stay allowed. `mcp-doctor`
+  and the nudge scan existing `headers` for inline secrets too.
+
+_Still planned for v0.4: runtime hooks (exfiltration guard + unpinned-tool
+tripwire) — see [PLAN.md](PLAN.md). Org gateway routing stays deferred
+([ROADMAP.md](ROADMAP.md))._
 
 ## [0.3.0] — 2026-06-24
 

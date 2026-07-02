@@ -53,7 +53,9 @@ your agent's tool surface.)
    descriptions *after* approval (e.g. the Sept 2025 Postmark incident). So:
    read the actual tool descriptions, not just the README — hidden instructions,
    "ignore previous", or requests to read files/env are disqualifying; pin the
-   version (step 2); re-vet on every version bump. See the OWASP MCP Top 10.
+   version (step 2); re-vet on every version bump (`/mcp-secure:update` walks
+   this — it diffs the new version's tools before adopting). See the OWASP MCP
+   Top 10.
 
 8. **Record it.** Add the vetted config to a bundle (references only) so the
    team gets it without re-deriving. Note the version and vet date.
