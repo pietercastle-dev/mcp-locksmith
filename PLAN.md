@@ -47,10 +47,19 @@ Real-world MCP-heavy sessions (in progress since 2026-07-02):
    server in `./.mcp.json` or `~/.claude.json` — plugin-scope servers are
    invisible to `mcp-pin`, see descope note.)
 
-Finding so far (2026-07-02): a session that exits at the trust dialog never
-runs hooks, so the nudge can't fire — correct behavior, not a bug. And the
-nudge surfaces in Claude's **first reply**, not as a startup prompt — set that
-expectation in the README (Gate 2, item 3).
+Findings so far (2026-07-02):
+
+- A session that exits at the trust dialog never runs hooks, so the nudge
+  can't fire — correct behavior, not a bug. And the nudge surfaces in Claude's
+  **first reply**, not as a startup prompt — set that expectation in the
+  README (Gate 2, item 3).
+- Real wrapper→mcp-launch migration (opnsense, both repos): guard correctly
+  allowed `sops://` refs into `.mcp.json`; `mcp-pin tools` proved the new
+  entry end-to-end; prune's cwd-relative warning was true and useful.
+- **BUG for Gate 1: `mcp-pin unpin <name>` matches by name only** — after a
+  re-pin under a new identity (the standard migration flow), it would delete
+  the NEW pin along with the stale one. Fix (match prune's semantics or
+  disambiguate when a name has >1 pin) + regression test before v0.5.0.
 
 **If clean →** stage **v0.5.0**: bump
 `plugins/mcp-secure/.claude-plugin/plugin.json`, date the CHANGELOG
