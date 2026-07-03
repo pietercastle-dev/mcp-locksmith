@@ -56,10 +56,11 @@ Findings so far (2026-07-02):
 - Real wrapper→mcp-launch migration (opnsense, both repos): guard correctly
   allowed `sops://` refs into `.mcp.json`; `mcp-pin tools` proved the new
   entry end-to-end; prune's cwd-relative warning was true and useful.
-- **BUG for Gate 1: `mcp-pin unpin <name>` matches by name only** — after a
-  re-pin under a new identity (the standard migration flow), it would delete
-  the NEW pin along with the stale one. Fix (match prune's semantics or
-  disambiguate when a name has >1 pin) + regression test before v0.5.0.
+- **BUG (✅ fixed same day): `mcp-pin unpin <name>` matched by name only** —
+  after a re-pin under a new identity (the standard migration flow), it
+  deleted the NEW pin along with the stale one. Now keeps the live-identity
+  pin when a name matches several; regression test in test_pin.py; CHANGELOG
+  under Fixed.
 
 **If clean →** stage **v0.5.0**: bump
 `plugins/mcp-secure/.claude-plugin/plugin.json`, date the CHANGELOG

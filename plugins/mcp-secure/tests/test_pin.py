@@ -96,6 +96,30 @@ class PinEnv(unittest.TestCase):
         self.pin("prune", "--yes")
         self.assertEqual(json.load(open(self.pins_file)), {})
 
+    def test_unpin_name_collision_keeps_live_pin(self):
+        # Regression (found dogfooding a wrapper→mcp-launch migration): after a
+        # server's command changes and it's re-pinned under its new identity,
+        # `unpin <name>` matched by NAME ONLY and deleted the fresh re-pin
+        # along with the stale one. With multiple matches it must remove only
+        # the pins that don't match the server as configured here.
+        self.write_config()
+        self.pin("pin")
+        spec = {"command": sys.executable, "args": [FAKE, "--migrated"]}
+        json.dump({"mcpServers": {"fake": spec}},
+                  open(os.path.join(self.root, ".mcp.json"), "w"))
+        self.pin("pin")  # re-pin under the new identity
+        self.assertEqual(len(json.load(open(self.pins_file))), 2)
+        r = self.pin("unpin", "fake")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("kept the pin", r.stdout)
+        remaining = json.load(open(self.pins_file))
+        self.assertEqual([v["args"] for v in remaining.values()],
+                         [[FAKE, "--migrated"]])
+        # A second run is the explicit "remove the live one too" escape hatch.
+        r = self.pin("unpin", "fake")
+        self.assertEqual(r.returncode, 0)
+        self.assertEqual(json.load(open(self.pins_file)), {})
+
     def test_legacy_sse_server_skipped(self):
         # streamable-HTTP coverage lives in test_pin_http.py; only the legacy
         # SSE transport is still skipped (with an honest note).

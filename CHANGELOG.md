@@ -78,6 +78,13 @@ plugin's `.claude-plugin/plugin.json`.
   (native permission system; write/destructive tools keep prompting).
 
 ### Fixed
+- **`mcp-pin unpin` name collision deleted a fresh re-pin** (found dogfooding
+  a wrapper→`mcp-launch` migration): it matched pins by name only, so after a
+  server's command changed and it was re-pinned under its new identity,
+  `unpin <name>` removed the new baseline along with the stale one. With
+  multiple matches it now keeps the pin for the server as configured in the
+  current context and says so; a single match is still removed unconditionally
+  (the deliberate "unpin this server" case).
 - **`mcp-doctor` NameError on the no-config path** — it called an undefined
   `info()` when no MCP config files were found.
 - **`mcp-secret` fragment-less sops ref crash on macOS** (found by the new

@@ -465,15 +465,35 @@ def cmd_unpin(names):
     if not names:
         warn("usage: mcp-pin unpin <name> [name…]"); return 2
     pins = load_pins()
+    live = set()
+    for n, s in discover().items():
+        cmd, args = spec_target(s)
+        live.add(identity(n, cmd, args))
     head("unpinning")
-    removed = 0
-    for key in list(pins):
-        if pins[key].get("name") in names:
-            ok(f"{pins[key].get('name')}: pin removed")
-            del pins[key]; removed += 1
-    if not removed:
+    removed = matched = 0
+    for name in names:
+        matches = [k for k in pins if pins[k].get("name") == name]
+        matched += len(matches)
+        # A name can map to several identities — typically a stale pin left
+        # behind after a server's command/args changed (e.g. a migration),
+        # plus the fresh re-pin. Deleting the pin for the server AS CONFIGURED
+        # HERE because it shares a name with a stale one would silently undo
+        # that re-pin — so with multiple matches, keep the live identity.
+        # A single match is removed unconditionally: that's the deliberate
+        # "unpin this server" case, live or not.
+        keep = [k for k in matches if k in live] if len(matches) > 1 else []
+        for k in matches:
+            if k in keep:
+                info(f"{name}: kept the pin for the server as configured here "
+                     f"(pinned {pins[k].get('pinnedAt', '?')}) — run "
+                     f"`mcp-pin unpin {name}` again to remove it too")
+                continue
+            ok(f"{name}: pin removed (pinned {pins[k].get('pinnedAt', '?')})")
+            del pins[k]; removed += 1
+    if not matched:
         warn(f"no pins matched: {', '.join(names)}"); return 0
-    save_pins(pins)
+    if removed:
+        save_pins(pins)
     return 0
 
 
