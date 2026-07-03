@@ -98,7 +98,8 @@ ours to read) — `mcp-pin` says so on a 401, and the nudge/tripwire stay quiet
 about such servers instead of nagging you toward the impossible. Legacy
 `type: "sse"` servers are skipped with a note. `verify` stamps `lastVerified`;
 the session nudge warns when pinned tools haven't been drift-checked in
-`MCP_PIN_MAX_AGE` days (default 14).
+`MCP_PIN_MAX_AGE` days (default 14). This nudge shows up inside Claude's **first
+reply** of the session (it's a `SessionStart` hook), not as a separate popup.
 
 Version bumps go through `/mcp-secure:update`: it diffs the candidate version's
 tools against the current ones **before** the config changes (`mcp-pin tools --

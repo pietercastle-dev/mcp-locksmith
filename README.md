@@ -1,26 +1,19 @@
 # mcp-locksmith
 
-**Safely connect tools to Claude — without leaking your keys into the chat.**
+**The easiest way to give Claude new tools — safe by default.**
 
 Claude Code can use external **tools** (called "MCP servers") — a web browser,
-Slack, your notes, a database. mcp-locksmith makes adding them safe and simple:
-your keys stay in your vault (never in config, never shown to Claude), new tools
-get a quick safety check, and built-in guardrails block leaks and warn you if a
-tool changes after you approved it. Claude walks you through everything in plain
-language.
+Slack, your notes, a database. Adding one normally means editing JSON by hand and
+pasting an API key into a config file. mcp-locksmith lets you just ask: say
+*"add a Slack tool"* and Claude sets it up. Your key goes into the vault you
+already use, never into config and never shown to Claude. New tools get a quick
+safety check, and built-in guards catch leaks and warn you if a tool changes
+after you approved it.
 
-## Before you start
+No cloud account, no Docker, no gateway. It's a few local scripts and hooks that
+run inside Claude Code, and nothing phones home.
 
-You need **Claude Code** on **macOS or Linux** (Windows via WSL — the helpers
-are bash/python scripts), plus:
-
-- **To run most tools:** Node.js (`npx`) and/or Python (`uvx`). `python3` also
-  runs the secret-leak guard hook — without it, that guard silently won't run.
-- **Only if a tool needs a key:** one vault CLI — **1Password** (`op`),
-  **Bitwarden** (`bw`), or **SOPS** (`sops`). Setup helps you pick; secure
-  step-by-step for each is in **[`BACKENDS.md`](plugins/mcp-secure/BACKENDS.md)**.
-
-## Start here (about 2 minutes)
+## Install (about 2 minutes)
 
 ```
 /plugin marketplace add pietercastle-dev/mcp-locksmith
@@ -28,8 +21,19 @@ are bash/python scripts), plus:
 /mcp-secure:setup
 ```
 
-Setup walks you through the rest and gets a first tool working. You only need a
-vault if a tool requires a key — setup will guide you if so.
+That's the whole install. `/mcp-secure:setup` gets your first tool working and
+handles the rest. You only need a vault if a tool requires a key.
+
+## Requirements
+
+**Claude Code** on **macOS or Linux** (Windows via WSL — the helpers are
+bash/python scripts). Then, only as you need them:
+
+- **To run most tools:** Node.js (`npx`) and/or Python (`uvx`). `python3` also
+  runs the secret-leak guard hook — without it, that guard silently won't run.
+- **Only if a tool needs a key:** one vault CLI — **1Password** (`op`),
+  **Bitwarden** (`bw`), or **SOPS** (`sops`). Setup helps you pick; secure
+  step-by-step for each is in **[`BACKENDS.md`](plugins/mcp-secure/BACKENDS.md)**.
 
 ## What you can do
 

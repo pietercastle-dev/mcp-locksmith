@@ -4,18 +4,18 @@
     "name": "pietercastle-dev"
   },
   "metadata": {
-    "description": "Secret-safe MCP harness for Claude Code: machinery + a template for team-global servers."
+    "description": "Give Claude new tools just by asking — API keys stay in your vault (never in config or chat), new tools get safety-checked, and it's all local: no cloud, no Docker. Plus a template for team-wide always-on tools."
   },
   "plugins": [
     {
       "name": "mcp-secure",
       "source": "./plugins/mcp-secure",
-      "description": "Secret-safe MCP harness: resolver-backed secret injection, vetting flow, and guard hooks. Install everywhere."
+      "description": "Add tools to Claude in plain language — keys stay in your vault (never in config or chat), new tools are safety-checked, and you're warned if one changes later. Local, no cloud. Start with /mcp-secure:setup."
     },
     {
       "name": "mcp-globals",
       "source": "./plugins/mcp-globals",
-      "description": "TEMPLATE for a profile of always-on servers (e.g. Slack at work, or a personal home set). Copy per profile; install where it applies."
+      "description": "Optional template for a set of always-on tools that load in every project (e.g. Slack at work, or a personal home set). Copy it per profile and install where it applies."
     }
   ]
 }
