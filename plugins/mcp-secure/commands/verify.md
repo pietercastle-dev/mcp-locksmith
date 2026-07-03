@@ -23,12 +23,12 @@ Commands:
 - `mcp-pin list`: show what's pinned.
 
 Run `mcp-pin verify` and interpret the output for the user:
-- **DRIFT** (a pinned tool changed) → tell the user plainly: "this tool changed since
+- **DRIFT** (a pinned tool changed): tell the user plainly: "this tool changed since
   you approved it. That can just be a normal update, but it can also be tampering,
   so it's worth a look before trusting it again." Re-vet (see VETTING.md), then
   `mcp-pin pin <name>` to re-approve.
-- **not pinned** → review the server's tools for hidden instructions, then pin it.
-- **unchanged** → all good.
+- **not pinned**: review the server's tools for hidden instructions, then pin it.
+- **unchanged**: all good.
 
 Notes: verifying contacts each server briefly (resolving its secrets via mcp-launch),
 so it's an on-demand check, not something that runs every session. A clean verify

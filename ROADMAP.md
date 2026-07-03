@@ -1,7 +1,7 @@
 # Roadmap
 
 Shipped work is in [CHANGELOG.md](CHANGELOG.md). The detailed
-milestone-by-milestone plan to feature-complete (v0.4 → v1.0) is
+milestone-by-milestone plan to feature-complete (v0.4 to v1.0) is
 **[PLAN.md](PLAN.md)**: vision, definition of done, and per-release scope.
 
 Deliberately deferred items, kept here so they aren't re-litigated:

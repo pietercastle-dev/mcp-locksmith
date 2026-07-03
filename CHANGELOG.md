@@ -90,7 +90,7 @@ plugin's `.claude-plugin/plugin.json`.
 
 ### Fixed
 - **`mcp-pin unpin` name collision deleted a fresh re-pin** (found dogfooding
-  a wrapper→`mcp-launch` migration): it matched pins by name only, so after a
+  a wrapper-to-`mcp-launch` migration): it matched pins by name only, so after a
   server's command changed and it was re-pinned under its new identity,
   `unpin <name>` removed the new baseline along with the stale one. With
   multiple matches it now keeps the pin for the server as configured in the

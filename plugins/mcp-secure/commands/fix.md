@@ -21,22 +21,22 @@ Diagnose from evidence, then walk the fix.
    usually the answer.
 
 3. **Match the failure to its fix** (most common first):
-   - **Backend not authenticated** → `op signin` / `export BW_SESSION="$(bw unlock --raw)"` /
+   - **Backend not authenticated**: `op signin` / `export BW_SESSION="$(bw unlock --raw)"` /
      age key missing (see BACKENDS.md).
-   - **A reference doesn't resolve** → the item/field name in the vault doesn't
+   - **A reference doesn't resolve**: the item/field name in the vault doesn't
      match the ref, or the secret was never stored. Fix the ref or the vault item.
-   - **`mcp-launch`/`mcp-secret` not found** → run the marketplace repo's
+   - **`mcp-launch`/`mcp-secret` not found**: run the marketplace repo's
      `install.sh` (symlinks them into `~/.local/bin`).
-   - **Command not found / runtime missing** → the tool's runtime isn't
+   - **Command not found / runtime missing**: the tool's runtime isn't
      installed (node/`npx`, `uvx`): install it, or the pinned package name is wrong.
-   - **Package/version not found on the registry** → the pinned version may have
+   - **Package/version not found on the registry**: the pinned version may have
      been yanked. Offer `/mcp-secure:update` to move to a current version safely.
-   - **`unresolved ${…}`** → plugin-scope config being run outside its plugin;
+   - **`unresolved ${…}`**: plugin-scope config being run outside its plugin;
      that server is managed by a plugin, not this repo's config.
-   - **Remote (http) tool failing** → launch checks don't apply; usually an
+   - **Remote (http) tool failing**: launch checks don't apply; usually an
      expired OAuth session. Reconnect via `/mcp`, or re-add. If it needs a
      header, confirm the `headersHelper` command runs cleanly by itself.
-   - **Timeout on first launch** → often the package download on first run;
+   - **Timeout on first launch**: often the package download on first run;
      re-try, or run the fetch manually under `sfw` to watch it.
 
 4. **Verify the fix**: re-run `mcp-doctor --launch` (or the failing flow) and

@@ -33,9 +33,9 @@ Then go through these steps, pausing for the user between each:
 3. **Do you even need a key vault?** Ask plainly: *"Do any tools you want to add
    need a password or API key (Slack, a private API, etc.)? Or do you just want
    safe basics for now, like a browser tool?"*
-   - **Not now / unsure →** skip vault setup entirely. Reassure them: lots of useful
+   - **Not now / unsure**, so skip vault setup entirely. Reassure them: lots of useful
      tools need no keys, and they can add a vault later by re-running this. Move on.
-   - **Yes →** recommend the easiest fit: **1Password** if they already use it (it
+   - **Yes**, so recommend the easiest fit: **1Password** if they already use it (it
      has a normal app), otherwise **Bitwarden** (free hosted) or **SOPS+age** (files
      in git, no SaaS). Then walk them through the secure setup for that one. The
      canonical steps live in the plugin's **`BACKENDS.md`**; follow it rather than

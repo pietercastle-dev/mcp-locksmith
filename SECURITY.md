@@ -57,7 +57,7 @@ track the tag), **review diffs before updating** (especially `hooks/` and
 ## Reporting a vulnerability
 
 Report **privately**: GitHub's private vulnerability reporting on this repo
-(Security → "Report a vulnerability"), or a minimal public issue asking for a
+(Security, then "Report a vulnerability"), or a minimal public issue asking for a
 private channel, without details. Include description, impact, and a
 reproduction. We aim to acknowledge within a few days and credit reporters who
 want it.

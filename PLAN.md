@@ -33,7 +33,7 @@ Gate 1 checklist, all green:
 3. **Break a tool / fix flow**: `mcp-doctor --launch` validated against a
    deliberately-broken config: named all four real causes precisely (missing
    runtime, unresolvable `sops://` ref, surfacing the server's OWN stderr,
-   `${…}` plugin-scope leak, remote→HTTP-verify routing), each with the right
+   `${…}` plugin-scope leak, remote-to-HTTP-verify routing), each with the right
    fix tip. fix.md maps each to a documented remedy. ✅
 4. **Update flow**: playwright/chrome-devtools bumped with a correct tool-diff
    preview; re-pinned; the unpin name-collision fix (`47552c6`) exercised live
@@ -43,7 +43,7 @@ Gate 1 checklist, all green:
    via `headersHelper`; slack correctly reported as the OAuth-store gap. ✅
 
 Bonus dogfood (2026-07-03): **add** (context7, keyless user-scope, pinned) and
-**audit** (unifi migrated wrapper→`mcp-launch --secret`; portainer/cloudflare/
+**audit** (unifi migrated wrapper to `mcp-launch --secret`; portainer/cloudflare/
 homeassistant correctly ruled NOT migration candidates) both ran clean.
 
 **UX fix shipped this session (2026-07-03):** orphan pins accumulated silently
@@ -58,8 +58,8 @@ silent) + 3 regression tests; `update.md` re-pin now uses `--replace`.
 Next session, in order:
 
 1. ✅ **Confirmed live (2026-07-03, fresh session):** opnsense
-   (`test_connection` → 26.1.10, real interfaces) and unifi-network
-   (`list_devices` → 3 real devices) both connect via their `sops://` chains.
+   (`test_connection` returned 26.1.10, real interfaces) and unifi-network
+   (`list_devices` returned 3 real devices) both connect via their `sops://` chains.
    The `unifi-mcp-wrapper.sh` fallback can now be deleted.
 2. **Real-orphan housekeeping**: `mcp-pin prune` still shows `google-sheets`
    + stale `portainer`; sweep them, and re-pin portainer fresh with `--replace`
@@ -93,16 +93,16 @@ real-world user) and slim the headers scripts to `mcp-secret` one-liners.
 All six items validated on real config. See the Status block above for the
 per-item evidence. Kept here as the checklist of record:
 
-Real-world MCP-heavy sessions (2026-07-02 → 2026-07-03):
+Real-world MCP-heavy sessions (2026-07-02 to 2026-07-03):
 
 1. The **exfil guard** must produce zero unwarranted asks. Note every ask it
    raises and whether it was warranted.
 2. The **tripwire** must stay silent with no pins; then `mcp-pin pin` one
    server and confirm exactly one ask per session for *unpinned* servers only.
-3. Break a tool on purpose (rename a vault item, or lock the vault) →
+3. Break a tool on purpose (rename a vault item, or lock the vault), then
    "the X tool is broken" should route to the fix flow and `mcp-doctor
    --launch` should name the real cause.
-4. Ask "are my tools up to date?" → the update flow should find the pinned
+4. Ask "are my tools up to date?" then the update flow should find the pinned
    versions, diff a candidate's tools, and re-pin cleanly.
 5. Confirm the SessionStart nudge fires at most once and says something true.
 6. HTTP pinning: pin a remote server with `headers`; confirm OAuth-store
@@ -116,7 +116,7 @@ Findings so far (2026-07-02):
   can't fire, correct behavior, not a bug. And the nudge surfaces in Claude's
   **first reply**, not as a startup prompt. Set that expectation in the
   README (Gate 2, item 3).
-- Real wrapper→mcp-launch migration (opnsense, both repos): guard correctly
+- Real wrapper-to-mcp-launch migration (opnsense, both repos): guard correctly
   allowed `sops://` refs into `.mcp.json`; `mcp-pin tools` proved the new
   entry end-to-end; prune's cwd-relative warning was true and useful.
 - **BUG (✅ fixed 2026-07-02): `mcp-pin unpin <name>` matched by name only**.
@@ -131,10 +131,10 @@ Findings so far (2026-07-02):
   re-pin flows pass it; bare pin now flags the orphan) + 3 regression tests;
   `update.md` updated. CHANGELOG under Added.
 
-**If clean →** stage **v0.4.0**: bump
+**If clean, then** stage **v0.4.0**: bump
 `plugins/mcp-secure/.claude-plugin/plugin.json`, date the CHANGELOG
 `[Unreleased]` section (+ link at bottom), tag, GitHub release.
-**If not →** fix, add a regression test, re-dogfood.
+**If not, then** fix, add a regression test, re-dogfood.
 
 ## Gate 2: v1.0 hardening (small and bounded)
 
@@ -151,7 +151,7 @@ Findings so far (2026-07-02):
 3. **README repositioning (S).** Lead with "the easiest way to give Claude
    tools, safe by default"; convenience is the hook, security the
    trust-builder. Position explicitly against the incumbents' costs (no cloud,
-   no containers, no gateway). Rename bundles → exemplars. Document that the
+   no containers, no gateway). Rename bundles to exemplars. Document that the
    SessionStart nudge appears in Claude's first reply.
 4. **Release integrity (S).** Signed/verified tags; a "verify what you
    installed" section; CHANGELOG per milestone.
@@ -160,7 +160,7 @@ Findings so far (2026-07-02):
 
 1. **Full clean-machine dogfood pass (M)**: every flow, against the
    definition of feature-complete below as a literal checklist. This is the
-   release gate (the v0.2.0 pass proved it catches real bugs; fresh machine →
+   release gate (the v0.2.0 pass proved it catches real bugs; fresh machine to
    working browser tool in <5 min is the setup metric).
 2. Tag **v1.0.0**, GitHub release.
 3. **Submit to the community marketplace**
@@ -172,7 +172,7 @@ Findings so far (2026-07-02):
 ## Definition of feature-complete (v1.0)
 
 A user who knows nothing about MCP can: **install** in ~2 minutes; **add any
-tool** in plain language (exemplar bundle → public registry → vet-new), with
+tool** in plain language (exemplar bundle to public registry to vet-new), with
 secrets always OAuth or vault references; **use tools** with invisible runtime
 protection (`ask`, never `deny`; no felt latency); **fix** a broken tool by
 saying so; **update** tools with a plain-language tool-diff before adopting;
@@ -202,8 +202,8 @@ points at); no org-config distribution; no native Windows.
 - **Obsolescence by the platform**: native `op://` resolution and tool-change
   re-approval are open, assigned upstream issues. Mitigation: ship now;
   multi-backend support and the flows survive either landing.
-- **Exfil-guard false positives** → ask-only, known shapes, dogfood hunts for
+- **Exfil-guard false positives**: ask-only, known shapes, dogfood hunts for
   unwarranted asks before release.
-- **HTTP pinning vs OAuth** → stays partial; label it honestly.
-- **Update previews execute the new version** → that's the point (inspect
+- **HTTP pinning vs OAuth** stays partial; label it honestly.
+- **Update previews execute the new version**: that's the point (inspect
   before adopting), but frame it and recommend `sfw` for the fetch.

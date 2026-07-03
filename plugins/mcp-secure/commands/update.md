@@ -14,16 +14,16 @@ at add time; this flow is how that version safely moves.
    the user asks about always-on tools). For each server find the package spec:
    `npx -y pkg@1.2.3`, `uvx pkg==1.2.3` and similar, **including after
    `mcp-launch … --`**. Classify each server:
-   - **version-pinned** → update candidate (the normal case)
-   - **unpinned** (bare `npx -y pkg`) → flag it: it refetches the newest build on
+   - **version-pinned**, so it's an update candidate (the normal case)
+   - **unpinned** (bare `npx -y pkg`), so flag it: it refetches the newest build on
      every launch, a supply-chain and reproducibility hole. Offer to pin the
      current latest version (then treat it as up to date and `mcp-pin pin` it).
-   - **remote** (`http`/`sse`/`url`) → skip with a note: remote tools update
+   - **remote** (`http`/`sse`/`url`), so skip with a note: remote tools update
      server-side; `/mcp-secure:verify` is the check that matters for them.
 
 2. **Check for newer versions.** npm: `npm view <pkg> version`; PyPI:
    `curl -s https://pypi.org/pypi/<pkg>/json` (`.info.version`). If `$ARGUMENTS`
-   names servers, limit to those. Present a plain summary: current → latest per
+   names servers, limit to those. Present a plain summary: current to latest per
    tool. If everything is current, say so and stop.
 
 3. **Preview before adopting** (for each tool the user wants updated). Never

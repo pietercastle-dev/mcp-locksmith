@@ -20,7 +20,7 @@ vendor's signed installer, never a random `curl … | sh`.
 brew install 1password-cli   # others: developer.1password.com/docs/cli/get-started
 ```
 
-Sign in via desktop-app integration (1Password app → Settings → Developer →
+Sign in via desktop-app integration (1Password app, then Settings, then Developer, then
 "Integrate with 1Password CLI"), then `op signin` and confirm with `op whoami`.
 
 Config (`~/.config/mcp-secret/config`, written by `install.sh`):

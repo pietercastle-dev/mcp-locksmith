@@ -21,9 +21,9 @@ backend is installed + authenticated, and every secret reference in `./.mcp.json
 (and `~/.claude.json`) actually resolves. To check specific files: `mcp-doctor path/to/.mcp.json`.
 
 For each `✘`, explain in plain terms what's wrong and propose the concrete fix, e.g.:
-- backend not authed → `op signin`, `bw unlock` (+ export `BW_SESSION`), or set up the age key.
-- a reference fails to resolve → the secret is missing/misnamed in the backend, or the ref path is wrong.
-- `mcp-launch` not on PATH → run the marketplace `install.sh`.
+- backend not authed: `op signin`, `bw unlock` (+ export `BW_SESSION`), or set up the age key.
+- a reference fails to resolve: the secret is missing/misnamed in the backend, or the ref path is wrong.
+- `mcp-launch` not on PATH: run the marketplace `install.sh`.
 
 **2. Tool drift.** Run `mcp-pin verify` to confirm no approved tool changed its
 capabilities since you pinned it (the rug-pull defense):
@@ -33,12 +33,12 @@ mcp-pin verify
 ```
 
 Fold the result into the same verdict:
-- **DRIFT** (a pinned tool changed) → flag it plainly: "one tool changed since you
+- **DRIFT** (a pinned tool changed): flag it plainly: "one tool changed since you
   approved it. Could be a normal update, could be tampering, worth a look before
   trusting it again." Re-vet (VETTING.md), then `mcp-pin pin <name>` to re-approve.
   For a focused drift-only run, point them at `/mcp-secure:verify`.
-- **not pinned** → mention they can pin approved tools so future checks catch changes.
-- **unchanged** → just roll it into "everything's healthy".
+- **not pinned**: mention they can pin approved tools so future checks catch changes.
+- **unchanged**: just roll it into "everything's healthy".
 
 If something is actually **broken** (a tool won't start, errors, won't connect),
 switch to the fix flow: `/mcp-secure:fix`. `mcp-doctor --launch` spawns each

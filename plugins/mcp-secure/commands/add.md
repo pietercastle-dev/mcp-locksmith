@@ -28,18 +28,18 @@ cases. Figure out which you're in, don't make the user choose:
    and mention the org's `docsUrl` (their internal MCP page) so the user can follow team
    conventions. (Org config is a pointer only; don't enforce anything. See `ORG.md`.)
 2. Look at `$ARGUMENTS`:
-   - **Empty** → this is almost always someone wanting a ready-made tool. Go to
+   - **Empty**, so this is almost always someone wanting a ready-made tool. Go to
      **Ready-made** and let them pick. (If they then describe a tool that isn't a
      bundle, switch to **Brand-new**.)
-   - **Names a shipped bundle** (matches a bundle filename, e.g. `frontend`) →
+   - **Names a shipped bundle** (matches a bundle filename, e.g. `frontend`), go to
      **Ready-made**.
-   - **Anything else** (a package like `@acme/foo`, a URL, a tool by name) →
+   - **Anything else** (a package like `@acme/foo`, a URL, a tool by name), go to
      **Brand-new**. When unsure, tell the user plainly which path you're taking and
      why, and let them redirect.
 
 ---
 
-### Ready-made (vetted bundle → this repo)
+### Ready-made (vetted bundle into this repo)
 
 1. Read each bundle. Ignore any `_comment` key, it's documentation.
 2. **Validate** each bundle before offering it: valid JSON shaped `{ "mcpServers": { ... } }`. If a bundle contains a literal secret (an `env`/`args` value that isn't a `${VAR}`, an `op://`/`sops://`/`bw://` ref, or an `mcp-launch --secret/--arg` ref), warn. Bundles must resolve secrets via `mcp-launch`, never inline them.

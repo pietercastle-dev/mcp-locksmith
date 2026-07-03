@@ -13,8 +13,8 @@ to one project via `/mcp-secure:add`.
 
 There are two ways to run a global server. Recommend based on the situation:
 
-**A) A profile of globals (e.g. team set at work, personal set at home) → a globals
-plugin.** If a set of servers should always be on in some environment, they belong
+**A) A profile of globals (e.g. team set at work, personal set at home) belongs in a
+globals plugin.** If a set of servers should always be on in some environment, they belong
 in a dedicated plugin (see the `mcp-globals` template in the marketplace repo; copy
 it per profile like `acme-globals` / `home-globals`). To add one:
 1. Vet it against `VETTING.md` (provenance, pinned version, least privilege). A
@@ -23,7 +23,7 @@ it per profile like `acme-globals` / `home-globals`). To add one:
    with a fully-qualified secret ref (e.g. `op://Work/<item>/<field>`). Never inline a token.
 3. Publish the plugin; teammates install it on the machines where it applies.
 
-**B) Personal globals (home, just a few) → user scope.** For one or two personal
+**B) Personal globals (home, just a few) belong in user scope.** For one or two personal
 always-on servers, skip the plugin overhead:
 1. Vet it the same way.
 2. `claude mcp add -s user <name> -- mcp-launch --secret NAME=<ref> -- <server> <args>`
