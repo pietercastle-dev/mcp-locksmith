@@ -120,6 +120,56 @@ class PinEnv(unittest.TestCase):
         self.assertEqual(r.returncode, 0)
         self.assertEqual(json.load(open(self.pins_file)), {})
 
+    def test_repin_replace_supersedes_stale_pin(self):
+        # After a version bump / migration the server hashes to a NEW identity;
+        # `pin --replace` must drop the stale same-name pin so no orphan is left
+        # (and a later verify can't match the wrong baseline). Fixes the orphan-
+        # accumulation UX found dogfooding — the re-pin flows pass --replace.
+        self.write_config()
+        self.pin("pin")
+        spec = {"command": sys.executable, "args": [FAKE, "--v2"]}
+        json.dump({"mcpServers": {"fake": spec}},
+                  open(os.path.join(self.root, ".mcp.json"), "w"))
+        r = self.pin("pin", "--replace")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("superseded prior pin", r.stdout)
+        remaining = json.load(open(self.pins_file))
+        self.assertEqual([v["args"] for v in remaining.values()], [[FAKE, "--v2"]])
+
+    def test_repin_without_replace_keeps_and_flags_stale_pin(self):
+        # Conservative default: a bare re-pin leaves the stale pin (it MIGHT be
+        # the same-named server in another repo, invisible from here) but flags
+        # it and points at --replace, so orphans are never silent.
+        self.write_config()
+        self.pin("pin")
+        spec = {"command": sys.executable, "args": [FAKE, "--v2"]}
+        json.dump({"mcpServers": {"fake": spec}},
+                  open(os.path.join(self.root, ".mcp.json"), "w"))
+        r = self.pin("pin")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("--replace", r.stdout)
+        self.assertEqual(len(json.load(open(self.pins_file))), 2)  # both kept
+
+    def test_repin_replace_leaves_other_servers_alone(self):
+        # --replace only supersedes pins with the SAME name; a different server's
+        # pin must survive a re-pin.
+        self.write_config(name="fake")
+        self.pin("pin")
+        # add a second, differently-named server and pin it too
+        json.dump({"mcpServers": {
+            "fake": {"command": sys.executable, "args": [FAKE]},
+            "other": {"command": sys.executable, "args": [FAKE]}}},
+            open(os.path.join(self.root, ".mcp.json"), "w"))
+        self.pin("pin")
+        # now bump only `fake` and re-pin --replace
+        json.dump({"mcpServers": {
+            "fake": {"command": sys.executable, "args": [FAKE, "--v2"]},
+            "other": {"command": sys.executable, "args": [FAKE]}}},
+            open(os.path.join(self.root, ".mcp.json"), "w"))
+        self.pin("pin", "--replace", "fake")
+        names = sorted(v["name"] for v in json.load(open(self.pins_file)).values())
+        self.assertEqual(names, ["fake", "other"])  # other untouched, fake not doubled
+
     def test_legacy_sse_server_skipped(self):
         # streamable-HTTP coverage lives in test_pin_http.py; only the legacy
         # SSE transport is still skipped (with an honest note).

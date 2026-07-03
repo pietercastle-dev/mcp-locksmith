@@ -378,6 +378,8 @@ def select(names):
 
 
 def cmd_pin(names):
+    replace = any(a in ("--replace", "-r") for a in names)
+    names = [n for n in names if not n.startswith("-")]
     pins = load_pins()
     sel = select(names)
     if not sel:
@@ -392,14 +394,34 @@ def cmd_pin(names):
         except Exception as e:
             bad(f"{n}: {e}"); fails += 1; continue
         cmd, args = spec_target(s)
+        new_id = identity(n, cmd, args)
         entry = {"name": n, "tools": hashes,
                  "pinnedAt": time.strftime("%Y-%m-%dT%H:%M:%S")}
         if is_remote(s):
             entry["url"] = cmd
         else:
             entry["command"] = cmd; entry["args"] = args
-        pins[identity(n, cmd, args)] = entry
+        # Superseded pins: same name, DIFFERENT identity. The server as configured
+        # here now hashes to new_id, so any other same-name pin is a stale baseline
+        # from before its command/args/url changed (version bump, migration, a
+        # reverted migration). Left in place these accumulate as orphans — and
+        # worse, a later `verify` can match the WRONG baseline and cry drift.
+        # --replace drops them (the re-pin FLOWS pass it, since supersession is the
+        # whole point there); a bare pin only FLAGS them, because a same-name pin
+        # *could* belong to that server in another repo not discoverable from here.
+        superseded = [k for k in pins
+                      if pins[k].get("name") == n and k != new_id]
+        pins[new_id] = entry
         ok(f"{n}: pinned {len(hashes)} tool(s)")
+        for k in superseded:
+            old = pins[k]
+            when, ntools = old.get("pinnedAt", "?"), len(old.get("tools") or {})
+            if replace:
+                del pins[k]
+                ok(f"{n}: superseded prior pin from {when} ({ntools} tool(s))")
+            else:
+                info(f"{n}: a prior pin from {when} ({ntools} tool(s)) is now "
+                     f"superseded — pass --replace to remove it, or `mcp-pin unpin {n}`")
     save_pins(pins)
     return 1 if fails else 0
 

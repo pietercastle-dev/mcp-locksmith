@@ -45,13 +45,16 @@ at add time; this flow is how that version safely moves.
 
 4. **Apply** on explicit approval: rewrite the version in `.mcp.json` — change
    *only* the version, keep `mcp-launch` wrapping and references exactly as they
-   are. Then record the new baseline:
+   are. Then record the new baseline, replacing the old version's pin in one step:
    ```sh
-   mcp-pin pin <name>
+   mcp-pin pin --replace <name>
    ```
-   The old version's pin is now an orphan; `mcp-pin prune` (dry-run) confirms it
-   and `--yes` clears it — but heed its warning that pins are per-user and
-   discovery is per-directory.
+   `--replace` drops the previous same-name pin (the bumped version hashes to a
+   new identity) so no orphan is left behind and a later `verify` can't match the
+   stale baseline. Without it, `mcp-pin pin` keeps the old pin and just flags it —
+   use a bare `mcp-pin prune` (dry-run) / `--yes` if you'd rather sweep orphans
+   separately, heeding its warning that pins are per-user and discovery is
+   per-directory.
 
 5. **Bundles.** If the server matches a bundle (shipped, or private in
    `~/.config/mcp-secret/bundles/` — `mcp-bundles --all`), offer to update the

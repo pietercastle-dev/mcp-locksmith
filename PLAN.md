@@ -16,49 +16,65 @@ requests. Ship before the gap closes.
 [CHANGELOG.md](CHANGELOG.md). Completed milestone detail (v0.4–v0.6) was
 removed from this file 2026-07-02 — see CHANGELOG and git history.
 
-## Status (2026-07-02 end of session) & next session
+## Status (2026-07-03 end of session) & next session
 
-Gate 1 is roughly half done. Completed today, all in real sessions:
+**Gate 1 dogfood is COMPLETE — all six checklist items validated on real
+config. Ready to stage v0.5.0** (pending two minor loose ends, below, that can
+be confirmed or explicitly deferred).
 
-- **Audit flow on real config** — clean except cloudflare (below); opnsense
-  migrated wrapper→`mcp-launch` + `sops://` refs in BOTH repos (this one and
-  homelab), re-pinned (144 tools), stale pin removed, wrapper + setup script
-  retired in homelab (`8ce6a27`). Also now version-pinned (`@0.11.0` via npx).
-- **Item 6 (HTTP pinning)**: homeassistant + portainer verified over
-  streamable HTTP via `headersHelper`; slack correctly reported as the
-  OAuth-store gap. ✅
-- **Item 1 (exfil guard)** silent all session — warranted. Keep watching.
-- **Item 5 (nudge)**: fires correctly; two findings recorded below. ✅
-- **unpin name-collision bug** found by the migration, fixed + regression
-  test (`47552c6`). Exactly what the gate exists for.
+Gate 1 checklist, all green:
+
+1. **Exfil guard** — silent across every dogfood session, zero unwarranted
+   asks. ✅ (keep watching)
+2. **Tripwire** — validated LIVE against real config + pins (2026-07-03):
+   `slack` (OAuth-store, no headers) silent, `cloudflare` (headersHelper,
+   unpinned) asks once, `opnsense` (pinned) silent, second cloudflare call
+   silent. Plus 10 unit cases in test_call_guard.py. ✅
+3. **Break a tool / fix flow** — `mcp-doctor --launch` validated against a
+   deliberately-broken config: named all four real causes precisely (missing
+   runtime, unresolvable `sops://` ref — surfacing the server's OWN stderr,
+   `${…}` plugin-scope leak, remote→HTTP-verify routing), each with the right
+   fix tip. fix.md maps each to a documented remedy. ✅
+4. **Update flow** — playwright/chrome-devtools bumped with a correct tool-diff
+   preview; re-pinned; the unpin name-collision fix (`47552c6`) exercised live
+   under a real multi-pin collision. ✅ (2026-07-03)
+5. **Nudge** — fires at most once, says something true. ✅
+6. **HTTP pinning** — homeassistant + portainer verified over streamable HTTP
+   via `headersHelper`; slack correctly reported as the OAuth-store gap. ✅
+
+Bonus dogfood (2026-07-03): **add** (context7, keyless user-scope, pinned) and
+**audit** (unifi migrated wrapper→`mcp-launch --secret`; portainer/cloudflare/
+homeassistant correctly ruled NOT migration candidates) both ran clean.
+
+**UX fix shipped this session (2026-07-03):** orphan pins accumulated silently
+after every identity change (version bump / migration / revert) — 2 real
+orphans (`google-sheets`, a stale `portainer`) built up over ~10 days, and the
+reverted portainer migration left the WRONG (14-tool) baseline live while the
+102-tool pin orphaned — a latent false-positive drift trap. Added
+`mcp-pin pin --replace` (supersedes the same-name prior pin in one step; the
+re-pin flows pass it; a bare pin now FLAGS the orphan instead of leaving it
+silent) + 3 regression tests; `update.md` re-pin now uses `--replace`.
 
 Next session, in order:
 
-1. **Confirm the migrated opnsense entry works live** — new config only
-   loads on a fresh session (this session still ran the old wrapper).
-2. **Item 3 (break a tool):** rename `OPNSENSE_API_KEY` in
-   `~/src/homelab/secrets/network.sops.yaml` → say "the opnsense tool is
-   broken" → fix flow should route and `mcp-doctor --launch` should name the
-   real cause. Restore the key after.
-3. **Item 4 (update flow):** ask "are my tools up to date?" —
-   playwright@0.0.76 is almost certainly behind; expect a tool-diff preview
-   and clean re-pin.
-4. **Item 2 (tripwire):** first call to an unpinned, pinnable server must ask
-   exactly once per session. Vehicle: homelab's `contextforge`
-   (headersHelper-based, unpinned). OAuth-shaped cloudflare/slack must stay
-   silent.
-5. **Chase the cloudflare 403** from the audit: `mcp-pin` can't list tools at
-   `mcp.cloudflare.com` with the headersHelper token, yet sessions connect —
-   likely OAuth-store auth in Claude Code and a stale/underscoped token in
-   the helper. Either fix the token or drop the helper (accepting the
-   documented no-pin gap).
-6. **If 1–5 are clean → stage v0.5.0** (bump plugin.json, date CHANGELOG,
-   tag, GitHub release).
+1. ✅ **Confirmed live (2026-07-03, fresh session):** opnsense
+   (`test_connection` → 26.1.10, real interfaces) and unifi-network
+   (`list_devices` → 3 real devices) both connect via their `sops://` chains.
+   The `unifi-mcp-wrapper.sh` fallback can now be deleted.
+2. **Real-orphan housekeeping** — `mcp-pin prune` still shows `google-sheets`
+   + stale `portainer`; sweep them, and re-pin portainer fresh with `--replace`
+   so its LIVE baseline matches what the server actually serves (else `verify`
+   false-alarms). Heed prune's cross-repo warning.
+3. **Chase the cloudflare 403** — `mcp-pin` can't list tools at
+   `mcp.cloudflare.com` with the headersHelper token, yet sessions connect
+   (likely OAuth-store auth + a stale/underscoped helper token). The tripwire
+   correctly asks about it because it's genuinely unpinned. Either fix the
+   token or drop the helper (accepting the documented no-pin gap).
+4. **Stage v0.5.0** — bump plugin.json, date CHANGELOG, tag, GitHub release.
+   Gate 1 is done; 1–3 are confirmations/housekeeping, not blockers.
 
-Optional dogfood fodder while working: migrate the remaining wrappers
-(unifi `--secret`, portainer-stdio `--arg`) and slim the four headers scripts
-to `mcp-secret` one-liners — each exercises a path the opnsense migration
-didn't (`--arg` has no real-world user yet).
+Optional dogfood fodder: migrate the portainer-stdio wrapper (`--arg`, still no
+real-world user) and slim the headers scripts to `mcp-secret` one-liners.
 
 ## Descoped 2026-07-02 (do not re-add before 1.0)
 
@@ -72,9 +88,12 @@ didn't (`--arg` has no real-world user yet).
   in ROADMAP if the gap ever bites.
 - **Quickstart recording** — nice-to-have, not release-blocking.
 
-## Gate 1 — dogfood, then release v0.5.0
+## Gate 1 — dogfood, then release v0.5.0 ✅ COMPLETE (2026-07-03)
 
-Real-world MCP-heavy sessions (in progress since 2026-07-02):
+All six items validated on real config — see the Status block above for the
+per-item evidence. Kept here as the checklist of record:
+
+Real-world MCP-heavy sessions (2026-07-02 → 2026-07-03):
 
 1. The **exfil guard** must produce zero unwarranted asks — note every ask it
    raises and whether it was warranted.
@@ -100,11 +119,17 @@ Findings so far (2026-07-02):
 - Real wrapper→mcp-launch migration (opnsense, both repos): guard correctly
   allowed `sops://` refs into `.mcp.json`; `mcp-pin tools` proved the new
   entry end-to-end; prune's cwd-relative warning was true and useful.
-- **BUG (✅ fixed same day): `mcp-pin unpin <name>` matched by name only** —
+- **BUG (✅ fixed 2026-07-02): `mcp-pin unpin <name>` matched by name only** —
   after a re-pin under a new identity (the standard migration flow), it
   deleted the NEW pin along with the stale one. Now keeps the live-identity
   pin when a name matches several; regression test in test_pin.py; CHANGELOG
   under Fixed.
+- **UX (✅ fixed 2026-07-03): orphan pins accumulated silently.** Every
+  identity change left a stale same-name pin; 2 built up over ~10 days and a
+  reverted portainer migration left the wrong baseline live (latent
+  false-positive drift). Added `mcp-pin pin --replace` (one-step supersede;
+  re-pin flows pass it; bare pin now flags the orphan) + 3 regression tests;
+  `update.md` updated. CHANGELOG under Added.
 
 **If clean →** stage **v0.5.0**: bump
 `plugins/mcp-secure/.claude-plugin/plugin.json`, date the CHANGELOG

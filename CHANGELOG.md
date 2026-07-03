@@ -7,6 +7,15 @@ plugin's `.claude-plugin/plugin.json`.
 ## [Unreleased]
 
 ### Added
+- **`mcp-pin pin --replace`** — one-step re-pin that supersedes the previous
+  same-name pin. After a version bump / wrapper migration a server hashes to a
+  new identity, and the old pin used to linger as an orphan (found dogfooding:
+  a reverted migration left the *wrong* baseline live, a latent false-positive
+  drift trap). `--replace` drops the stale same-name pin; the update flow now
+  passes it. A bare `mcp-pin pin` stays conservative — it FLAGS the superseded
+  pin and points at `--replace`/`unpin` rather than deleting it (a same-name
+  pin may belong to that server in another repo, invisible from here). Three
+  regression tests in test_pin.py.
 - **HTTP pinning** — `mcp-pin` now reads `tools/list` over streamable HTTP
   (POST JSON-RPC; both `application/json` and `text/event-stream` response
   bodies; `Mcp-Session-Id` threading), honoring the config's `headers` and
