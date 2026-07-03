@@ -48,7 +48,7 @@ ti = data.get("tool_input") or {}
 # so AUTHORIZATION/COOKIE are here even though they're headers, not env keys).
 SECRET_KEY = re.compile(
     r"(TOKEN|SECRET|PASSWORD|PASSWD|APIKEY|API_KEY|ACCESS_KEY|PRIVATE_KEY|"
-    r"CREDENTIAL|CLIENT_SECRET|AUTHORIZATION|\bCOOKIE\b|\bKEY\b|\bPAT\b)", re.I)
+    r"CREDENTIAL|CLIENT_SECRET|AUTH|BEARER|\bCOOKIE\b|\bKEY\b|\bPAT\b)", re.I)
 # Values that are obviously credentials regardless of key name or position.
 SECRET_VAL = re.compile(
     r"(ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|"

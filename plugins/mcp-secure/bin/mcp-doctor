@@ -141,7 +141,7 @@ else:
 # The guard stops new secrets going in; this catches ones already sitting in config.
 _SECRET_KEY = re.compile(
     r"(TOKEN|SECRET|PASSWORD|PASSWD|APIKEY|API_KEY|ACCESS_KEY|PRIVATE_KEY|"
-    r"CREDENTIAL|CLIENT_SECRET|AUTH|BEARER|\bKEY\b|\bPAT\b)", re.I)
+    r"CREDENTIAL|CLIENT_SECRET|AUTH|BEARER|\bCOOKIE\b|\bKEY\b|\bPAT\b)", re.I)
 _SECRET_VAL = re.compile(
     r"(ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|"
     r"xox[baprs]-[A-Za-z0-9-]{10,}|sk-[A-Za-z0-9]{20,}|"
