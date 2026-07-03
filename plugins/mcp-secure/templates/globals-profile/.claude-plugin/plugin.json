@@ -1,0 +1,10 @@
+{
+  "name": "your-globals",
+  "displayName": "Your always-on profile (rename me)",
+  "version": "0.1.0",
+  "description": "SCAFFOLD: your profile of always-on MCP servers (e.g. Slack at work, or a personal set at home), loaded in every repo when enabled. Rename this plugin, fill in .mcp.json, install where it applies.",
+  "author": { "name": "you" },
+  "keywords": ["mcp", "global", "profile"],
+  "defaultEnabled": false,
+  "license": "MIT"
+}

@@ -15,13 +15,18 @@ There are two ways to run a global server. Recommend based on the situation:
 
 **A) A profile of globals (e.g. team set at work, personal set at home) belongs in a
 globals plugin.** If a set of servers should always be on in some environment, they belong
-in a dedicated plugin (see the `mcp-globals` template in the marketplace repo; copy
-it per profile like `acme-globals` / `home-globals`). To add one:
-1. Vet it against `VETTING.md` (provenance, pinned version, least privilege). A
+in a dedicated plugin; its own enable/disable is what makes it on-here-not-there. Scaffold
+one from the bundled template at `${CLAUDE_PLUGIN_ROOT}/templates/globals-profile/`:
+1. Copy that template into the user's marketplace repo, rename it per profile
+   (e.g. `acme-globals` / `home-globals`), set `name` in its
+   `.claude-plugin/plugin.json`, and add it to the marketplace `plugins` list.
+2. Vet each server against `VETTING.md` (provenance, pinned version, least privilege). A
    global server runs everywhere. Vet it at least as hard as a project one.
-2. Add it to that plugin's `.mcp.json` using `${CLAUDE_PLUGIN_ROOT}/bin/mcp-launch`
+3. Add servers to that plugin's `.mcp.json` using `${CLAUDE_PLUGIN_ROOT}/bin/mcp-launch`
    with a fully-qualified secret ref (e.g. `op://Work/<item>/<field>`). Never inline a token.
-3. Publish the plugin; teammates install it on the machines where it applies.
+4. Give the profile a `bin/mcp-launch` by symlinking `mcp-secure`'s copy (the sanctioned
+   cross-plugin share); the template README shows the command.
+5. Publish the plugin; teammates install it on the machines where it applies.
 
 **B) Personal globals (home, just a few) belong in user scope.** For one or two personal
 always-on servers, skip the plugin overhead:

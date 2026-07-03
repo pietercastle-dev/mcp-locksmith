@@ -16,7 +16,7 @@ plugins/mcp-secure/
   commands/   the flows (setup/add/update/fix/remove/audit/check/verify/always-on)
   skills/     plain-language routers → the commands (add-tool, update-tool, …)
   tests/      bin-script tests + fake_mcp_server.py fixture (env-driven toolset)
-plugins/mcp-globals/   template for always-on server profiles
+  templates/  globals-profile scaffold, copied by the always-on flow
 ```
 
 ## Run the checks (what CI runs, ubuntu + macos)

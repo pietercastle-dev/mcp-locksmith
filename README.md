@@ -90,10 +90,11 @@ model, tool pinning, and the complete security model) lives in
 
 ## What's in this repo
 
-A Claude Code **plugin marketplace**: **`plugins/mcp-secure/`** (the toolkit) and
-**`plugins/mcp-globals/`** (a template for your always-on tools, copied per
-profile). `install.sh` is a one-time step that puts the helpers on PATH and saves
-your vault choice.
+A Claude Code **plugin marketplace** with one plugin, **`plugins/mcp-secure/`**
+(the toolkit). Always-on team tools are scaffolded from a bundled template
+(`plugins/mcp-secure/templates/globals-profile/`) by the `always-on` flow.
+`install.sh` is a one-time step that puts the helpers on PATH and saves your
+vault choice.
 
 ## Releases, trust & updates
 
