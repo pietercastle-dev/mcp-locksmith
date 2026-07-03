@@ -19,7 +19,7 @@ removed from this file 2026-07-02 — see CHANGELOG and git history.
 ## Status (2026-07-03 end of session) & next session
 
 **Gate 1 dogfood is COMPLETE — all six checklist items validated on real
-config. Ready to stage v0.5.0** (pending two minor loose ends, below, that can
+config. Ready to stage v0.4.0** (pending two minor loose ends, below, that can
 be confirmed or explicitly deferred).
 
 Gate 1 checklist, all green:
@@ -70,7 +70,7 @@ Next session, in order:
    (likely OAuth-store auth + a stale/underscoped helper token). The tripwire
    correctly asks about it because it's genuinely unpinned. Either fix the
    token or drop the helper (accepting the documented no-pin gap).
-4. **Stage v0.5.0** — bump plugin.json, date CHANGELOG, tag, GitHub release.
+4. **Stage v0.4.0** — bump plugin.json, date CHANGELOG, tag, GitHub release.
    Gate 1 is done; 1–3 are confirmations/housekeeping, not blockers.
 
 Optional dogfood fodder: migrate the portainer-stdio wrapper (`--arg`, still no
@@ -88,7 +88,7 @@ real-world user) and slim the headers scripts to `mcp-secret` one-liners.
   in ROADMAP if the gap ever bites.
 - **Quickstart recording** — nice-to-have, not release-blocking.
 
-## Gate 1 — dogfood, then release v0.5.0 ✅ COMPLETE (2026-07-03)
+## Gate 1 — dogfood, then release v0.4.0 ✅ COMPLETE (2026-07-03)
 
 All six items validated on real config — see the Status block above for the
 per-item evidence. Kept here as the checklist of record:
@@ -131,7 +131,7 @@ Findings so far (2026-07-02):
   re-pin flows pass it; bare pin now flags the orphan) + 3 regression tests;
   `update.md` updated. CHANGELOG under Added.
 
-**If clean →** stage **v0.5.0**: bump
+**If clean →** stage **v0.4.0**: bump
 `plugins/mcp-secure/.claude-plugin/plugin.json`, date the CHANGELOG
 `[Unreleased]` section (+ link at bottom), tag, GitHub release.
 **If not →** fix, add a regression test, re-dogfood.
