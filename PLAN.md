@@ -1,21 +1,39 @@
-# Plan to feature-complete (v1.0)
+# Plan to v1.0 — ship it
 
 **Vision:** a super easy to use, useful-for-everyone MCP harness that builds in
 QoL *and* security improvements for all MCP installation and handling.
 
-[ROADMAP.md](ROADMAP.md) holds the one deliberately deferred direction (org
-gateway/policy); shipped items move to [CHANGELOG.md](CHANGELOG.md).
+**Positioning (decided 2026-07-02, distribution assessment):** the product is
+the **harness** — vault-reference secrets, tool pinning, runtime guards,
+plain-language flows — local, no cloud, no containers, inside Claude Code.
+Every incumbent imposes one of those costs (Snyk cloud for mcp-scan, Docker for
+ToolHive, deployed infra for the gateways), and no other Claude Code plugin
+covers this niche. The main risk is **time, not competition**: native `op://`
+resolution and tool-change re-approval are open, assigned Claude Code feature
+requests. Ship before the gap closes.
 
-## Status (2026-07-01) & next actions
+[ROADMAP.md](ROADMAP.md) holds deferred directions; shipped items live in
+[CHANGELOG.md](CHANGELOG.md). Completed milestone detail (v0.4–v0.6) was
+removed from this file 2026-07-02 — see CHANGELOG and git history.
 
-**Done:** all of v0.4; v0.5 except the bundle catalog; all of v0.6 (HTTP pinning
-landed 2026-07-01). Everything is on `main`, CI green (ubuntu + macos),
-release-pending under CHANGELOG `[Unreleased]`.
+## Descoped 2026-07-02 (do not re-add before 1.0)
 
-**Next: the dogfood gate** (real-world sessions, planned 2026-07-02):
+- **Bundle catalog** (was "~10 vetted bundles, ongoing"). Catalogs are the
+  *crowded* part of the market (Docker MCP Catalog, official registry,
+  Smithery, mcpm) and per-server vetting is a staleness treadmill with implied
+  liability. The harness's value is making *any* server safe to adopt;
+  registry discovery in `add` (shipped) covers finding them. Keep only
+  **exemplars** (Gate 2).
+- **Plugin-scope server discovery in `mcp-pin`** — post-1.0 candidate, noted
+  in ROADMAP if the gap ever bites.
+- **Quickstart recording** — nice-to-have, not release-blocking.
 
-1. Work normally in MCP-heavy sessions. The **exfil guard** must produce zero
-   unwarranted asks — note every ask it raises and whether it was warranted.
+## Gate 1 — dogfood, then release v0.5.0
+
+Real-world MCP-heavy sessions (in progress since 2026-07-02):
+
+1. The **exfil guard** must produce zero unwarranted asks — note every ask it
+   raises and whether it was warranted.
 2. The **tripwire** must stay silent with no pins; then `mcp-pin pin` one
    server and confirm exactly one ask per session for *unpinned* servers only.
 3. Break a tool on purpose (rename a vault item, or lock the vault) →
@@ -24,35 +42,67 @@ release-pending under CHANGELOG `[Unreleased]`.
 4. Ask "are my tools up to date?" → the update flow should find the pinned
    versions, diff a candidate's tools, and re-pin cleanly.
 5. Confirm the SessionStart nudge fires at most once and says something true.
+6. HTTP pinning: pin a remote server with `headers`; confirm OAuth-store
+   servers are skipped quietly, never nagged. (Needs a headers-based remote
+   server in `./.mcp.json` or `~/.claude.json` — plugin-scope servers are
+   invisible to `mcp-pin`, see descope note.)
 
-**If clean → stage the release:** bump
-`plugins/mcp-secure/.claude-plugin/plugin.json` (suggest **0.5.0** — the
-Unreleased block spans v0.4+v0.5 scope), date the CHANGELOG section, tag,
-GitHub release. If not clean → fix, add a regression test, re-dogfood.
+Finding so far (2026-07-02): a session that exits at the trust dialog never
+runs hooks, so the nudge can't fire — correct behavior, not a bug. And the
+nudge surfaces in Claude's **first reply**, not as a startup prompt — set that
+expectation in the README (Gate 2, item 3).
 
-**Then, in order:** bundle catalog (needs real per-server vetting research),
-v1.0 README repositioning + release-integrity pass. The dogfood sessions can
-now also exercise HTTP pinning (pin a remote server with headers; confirm
-OAuth-store servers are skipped quietly, not nagged about). Caveat found
-2026-07-01: `mcp-pin` discovery reads `./.mcp.json` + `~/.claude.json` only —
-plugin-scope servers (e.g. a globals plugin's) are invisible to it, so the
-HTTP-pinning dogfood needs a headers-based remote server in one of those
-scopes. Plugin-scope discovery is a candidate follow-up if the dogfood makes
-it feel like a gap.
+**If clean →** stage **v0.5.0**: bump
+`plugins/mcp-secure/.claude-plugin/plugin.json`, date the CHANGELOG
+`[Unreleased]` section (+ link at bottom), tag, GitHub release.
+**If not →** fix, add a regression test, re-dogfood.
 
-## Definition of feature-complete
+## Gate 2 — v1.0 hardening (small and bounded)
+
+1. **Exemplar bundles, not a catalog (S).** Replace the `example-secret`
+   placeholder with ONE real secret-backed bundle (GitHub is the obvious pick:
+   exact-pinned, vet date recorded) so the `mcp-launch` reference pattern has a
+   live demonstration. Keep `frontend.json`. 3–4 bundles total, presented as
+   *exemplars of the pattern* in the README — never as a curated catalog.
+2. **Keep-in-sync CI test (S).** Assert the `SECRET_VAL`/`SECRET_KEY`/
+   `SAFE_VAL` regexes and the `identity()` scheme are byte-identical across
+   their five copies (mcp-guard.py, mcp-call-guard.py, mcp-nudge.py,
+   mcp-doctor, mcp-pin). This duplication is the most likely future-bug site;
+   the test makes the "keep in sync" comments enforceable.
+3. **README repositioning (S).** Lead with "the easiest way to give Claude
+   tools — safe by default"; convenience is the hook, security the
+   trust-builder. Position explicitly against the incumbents' costs (no cloud,
+   no containers, no gateway). Rename bundles → exemplars. Document that the
+   SessionStart nudge appears in Claude's first reply.
+4. **Release integrity (S).** Signed/verified tags; a "verify what you
+   installed" section; CHANGELOG per milestone.
+
+## Gate 3 — release v1.0.0 & distribute
+
+1. **Full clean-machine dogfood pass (M)** — every flow, against the
+   definition of feature-complete below as a literal checklist. This is the
+   release gate (the v0.2.0 pass proved it catches real bugs; fresh machine →
+   working browser tool in <5 min is the setup metric).
+2. Tag **v1.0.0**, GitHub release.
+3. **Submit to the community marketplace**
+   (`anthropics/claude-plugins-community`) — automated safety screening plus
+   listing is the cheapest credibility and discovery available, and directly
+   addresses the trust-bootstrap problem (a security plugin from an
+   unestablished author).
+
+## Definition of feature-complete (v1.0)
 
 A user who knows nothing about MCP can: **install** in ~2 minutes; **add any
-tool** in plain language (vetted bundle catalog → public registry → vet-new),
-with secrets always OAuth or vault references; **use tools** with invisible
-runtime protection (`ask`, never `deny`; no felt latency); **fix** a broken tool
-by saying so; **update** tools with a plain-language tool-diff before adopting;
+tool** in plain language (exemplar bundle → public registry → vet-new), with
+secrets always OAuth or vault references; **use tools** with invisible runtime
+protection (`ask`, never `deny`; no felt latency); **fix** a broken tool by
+saying so; **update** tools with a plain-language tool-diff before adopting;
 **trust** drift detection across stdio *and* HTTP, told when checks go stale;
-**remove** tools with the key revoked (✅ v0.1.1); **work as a team** via org
-config + private bundles (✅ v0.2/v0.3); and **trust the plugin itself** —
-everything in `bin/` and `hooks/` tested in CI, releases pinnable.
+**remove** tools with the key revoked; **work as a team** via org config +
+private bundles; and **trust the plugin itself** — everything in `bin/` and
+`hooks/` tested in CI, releases pinnable and verifiable.
 
-## Principles (every feature below)
+## Principles
 
 - **Quiet by default** — runtime interventions `ask`, never `deny`; nudge once.
 - **Fail open** — an erroring hook allows the action; defense-in-depth, not a sandbox.
@@ -61,105 +111,20 @@ everything in `bin/` and `hooks/` tested in CI, releases pinnable.
 - **Don't duplicate the platform** — integrate with Claude Code's permission
   system and OAuth store; generate config for them, don't re-implement them.
 
-## v0.4 — Lifecycle & runtime guard
-
-1. ✅ **`/mcp-secure:update` + `update-tool` skill (L).** "Dependabot for MCP
-   servers" — vetting pins a version, then nothing ever moves it. Discover
-   versioned specs (`npx pkg@x`, `uvx pkg==x`, incl. inside `mcp-launch … --`),
-   check npm/PyPI for latest, **launch the candidate in isolation and diff its
-   tools against the current pin** (plain-language: "the new version adds a
-   `delete_repo` tool"), re-vet the diff only (VETTING.md step 7), then rewrite
-   the version, re-pin, and offer to update the matching bundle.
-   *Implementation:* `mcp-pin` gains a plumbing subcommand
-   (`mcp-pin tools -- <cmd>…`) so no second MCP client is written. Remote
-   servers skip until v0.6.
-2. ✅ **Runtime hooks (M)** — the missing layer; today every defense fires before
-   or between sessions.
-   - ✅ **Exfil guard:** PreToolUse on `mcp__.*` (+ `WebFetch|WebSearch`); `ask`
-     when a credential-shaped value heads out through a tool call (the classic
-     tool-poisoning payoff). References pass.
-   - ✅ **Unpinned-tool tripwire:** on an `mcp__<server>__*` call, check
-     `pins.json` (pure file reads); `ask` once per server per session if
-     unpinned. Gated: only fires if the user has ≥1 pin or org
-     `policy.requireVetting` is set — never nags non-adopters. (First advisory
-     consumer of `policy.requireVetting`.)
-   - ✅ **Guard gap:** `claude mcp add --header "Authorization: Bearer <opaque>"`
-     evaded both the `-e` regex and known token shapes — header check added.
-   - ✅ Tests in CI; SECURITY.md/README gain the runtime layer.
-   *Acceptance:* measured ~70ms/call, of which ~50ms is Python interpreter
-   startup (the existing config guard pays the same floor) — imperceptible
-   against a real tool call. Zero-unwarranted-asks still to confirm across a
-   few real dogfood sessions.
-
-## v0.5 — Useful for everyone
-
-1. **Bundle catalog (M, ongoing).** From 2 bundles to the ~10 everyone wants:
-   GitHub, browser, filesystem, Postgres, SQLite, fetch/search, Slack,
-   notes/memory, Sentry, docs. Each vetted, exact-pinned, vet date recorded.
-   Write the inclusion criteria into VETTING.md step 8.
-2. ✅ **Registry discovery in `add` (S).** No bundle match → query the official
-   MCP registry by capability, present matches with provenance signals, feed the
-   pick into the existing vetting path. Registry listing is discovery input,
-   **not** trust.
-3. ✅ **`/mcp-secure:fix` + `fix-tool` skill (M).** `mcp-doctor --launch` (briefly
-   spawns stdio servers via `mcp-pin tools`, surfaces the server's stderr) + a
-   flow for "the Slack tool stopped working": doctor chain → launch check →
-   guided fix (reauth, unlock vault, reinstall pin).
-4. ✅ **Least-privilege permissions at add time (S).** Offer a suggested
-   `.claude/settings.json` block: allow read-only tools, keep write/destructive
-   on `ask`. Native mechanism, no runtime policy engine.
-5. ✅ **Setup polish (S).** Already true: `setup` step 2 runs `install.sh` itself;
-   the no-key path is zero-config. Metric (fresh machine → working browser tool
-   in <5 min) to confirm at the v1.0 dogfood pass.
-
-## v0.6 — Coverage & trust
-
-1. ✅ **HTTP support in `mcp-pin` (M).** The advice "prefer OAuth remote servers"
-   and "stdio only" are in tension — the recommended type is the one drift
-   detection skips. Add `tools/list` over streamable HTTP honoring
-   `headers`/`headersHelper`. OAuth tokens in Claude Code's store stay a
-   documented gap — honest labeling over fake coverage.
-   *Implementation:* remote identity hashes as (name + url) — same scheme, url
-   in the command slot, so the keep-in-sync `identity()` copies changed
-   uniformly. The nudge and tripwire now cover remote servers with
-   `headers`/`headersHelper`, and stay QUIET about remote servers with neither
-   (likely OAuth — a pin may be impossible; never nag toward the impossible).
-   Legacy `type: "sse"` skipped with a note. Fake streamable-HTTP fixture
-   (JSON + SSE bodies, sessions, auth) + test_pin_http.py in CI.
-2. ✅ **Verify staleness (S).** Pins get `lastVerified`; the nudge warns past
-   `MCP_PIN_MAX_AGE` (default 14 days), at most once per period. No auto-verify
-   per session (launches every server).
-3. ✅ **Test the untested majority (L)** *(pulled forward into v0.4).* Fake stdio
-   MCP server fixture → `mcp-pin` pin/verify/drift/unpin/prune tests; stub
-   backends for `mcp-secret` (incl. `sops://` traversal-reject regression);
-   stub `mcp-secret` for `mcp-launch`; nudge + runtime-hook + doctor tests;
-   `shellcheck` in CI; ubuntu **and** macos matrix (the SOPS key-location bug
-   was invisible to single-OS CI — and the suite immediately caught a second
-   macOS-only bash-3.2 bug in `mcp-secret`).
-4. ✅ **State platform scope (XS).** Native Windows unsupported (WSL works) —
-   stated in README + SECURITY.md.
-
-## v1.0 — Positioning & release trust
-
-1. **README repositioning (S).** Lead with "the easiest way to give Claude
-   tools — safe by default"; quickstart recording. Convenience is the hook,
-   security the trust-builder.
-2. **Release integrity (S).** Signed/verified tags, CHANGELOG per milestone,
-   "verify what you installed" section.
-3. **Full dogfood pass (M).** Clean machine, every flow, against the definition
-   above as a literal checklist — the release gate (v0.2.0 proved it catches
-   real bugs).
-
 ## Non-goals
 
-No gateway / policy hard-enforcement (see [ROADMAP.md](ROADMAP.md)); no
-sandboxing of approved servers; no PostToolUse result scanning (deferred to the
-scanners VETTING.md points at); no org-config distribution; no native Windows.
+No bundle catalog (exemplars only — see descope); no gateway / policy
+hard-enforcement (see [ROADMAP.md](ROADMAP.md)); no sandboxing of approved
+servers; no PostToolUse result scanning (deferred to the scanners VETTING.md
+points at); no org-config distribution; no native Windows.
 
 ## Risks
 
+- **Obsolescence by the platform** — native `op://` resolution and tool-change
+  re-approval are open, assigned upstream issues. Mitigation: ship now;
+  multi-backend support and the flows survive either landing.
 - **Exfil-guard false positives** → ask-only, known shapes, dogfood hunts for
   unwarranted asks before release.
-- **HTTP pinning vs OAuth** → may stay partial; label it.
+- **HTTP pinning vs OAuth** → stays partial; label it honestly.
 - **Update previews execute the new version** → that's the point (inspect
   before adopting), but frame it and recommend `sfw` for the fetch.
