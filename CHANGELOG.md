@@ -6,6 +6,37 @@ plugin's `.claude-plugin/plugin.json`.
 
 ## [Unreleased]
 
+### Added
+- **Keep-in-sync test** (`tests/test_keep_in_sync.py`): the credential regexes
+  (`SECRET_VAL`/`SECRET_KEY`/`SAFE_VAL`) and the server `identity()` hash are
+  duplicated by design across five standalone scripts (mcp-guard.py,
+  mcp-call-guard.py, mcp-nudge.py, mcp-doctor, mcp-pin), the most likely
+  future-bug site. The test AST-extracts each copy (the scripts exit at import,
+  so they can't be imported), asserts the shared patterns are byte-identical
+  where duplicated and behave the same against one secret/safe corpus, and
+  confirms the three `identity()` copies hash alike. A copy changed without
+  mirroring the others now fails CI.
+
+### Changed
+- **`mcp-globals` folded into `mcp-secure`.** The always-on profile template was
+  a second, `defaultEnabled: false` marketplace plugin that nobody installed as
+  is (you copy it per profile), and the `always-on` flow pointed at it "in the
+  marketplace repo", which plugin-install users never have on disk. It now ships
+  as a bundled scaffold inside mcp-secure
+  (`templates/globals-profile/`), so `/mcp-secure:always-on` stamps out a profile
+  from a template that's actually on the machine. The marketplace now lists one
+  plugin. No user action needed: a profile you already created is unaffected (it
+  was always your own renamed copy, never the shipped template).
+
+### Fixed
+- **`SECRET_KEY` drift between the write guard and the config scan**:
+  mcp-guard.py matched `AUTHORIZATION`/`COOKIE` while mcp-doctor matched
+  `AUTH`/`BEARER`, so a key named `COOKIE` was flagged on write but not by the
+  existing-config scan, and `BEARER` the reverse. Reconciled both to the union
+  (`AUTH` subsumes `AUTHORIZATION`; `BEARER` and `COOKIE` kept), so a
+  credential-shaped key name is caught the same way on both paths. Frozen by the
+  keep-in-sync test above.
+
 ## [0.4.0] - 2026-07-03
 
 ### Added

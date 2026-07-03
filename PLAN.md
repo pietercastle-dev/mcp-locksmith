@@ -16,7 +16,7 @@ requests. Ship before the gap closes.
 [CHANGELOG.md](CHANGELOG.md). Completed milestone detail (v0.4-v0.6) was
 removed from this file 2026-07-02. See CHANGELOG and git history.
 
-## Status (2026-07-03 end of session) & next session
+## Status (2026-07-03, session 2) & next session
 
 **v0.4.0 SHIPPED (2026-07-03).** Tag and GitHub release are published:
 https://github.com/pietercastle-dev/mcp-locksmith/releases/tag/v0.4.0. Gate 1
@@ -38,29 +38,46 @@ Gate 1 checklist, all green (evidence of record):
 5. **Nudge**: fires at most once, says something true.
 6. **HTTP pinning**: homeassistant + portainer verified over streamable HTTP.
 
-Done this session (all 2026-07-03):
+Done this session (2026-07-03, session 2):
 
-- **`mcp-pin pin --replace`** shipped (one-step supersede of a stale same-name
-  pin) + 3 regression tests; `update.md` re-pin uses it. Fixes the silent
-  orphan-pin accumulation found dogfooding.
-- **opnsense + unifi migrations confirmed live** on a fresh session; the
-  `unifi-mcp-wrapper.sh` fallback can now be deleted.
-- **Real-orphan housekeeping done**: swept `google-sheets` and the stale
-  `portainer`, re-pinned portainer fresh. Now 7 pins, 0 orphans.
-- **Docs repositioned for adoption** (ease-first hero, zero-infra framing,
-  plain-language marketplace copy) plus a **repo-wide AI-tell sweep**: zero
-  em/en-dashes, prose arrows converted to words. Keep it that way: plain
-  punctuation only in all future prose (see the no-ai-tells memory).
+- **Keep-in-sync CI test** (Gate 2 item 2, done): `tests/test_keep_in_sync.py`
+  AST-extracts the duplicated credential regexes (`SECRET_VAL`/`SECRET_KEY`/
+  `SAFE_VAL`) and the `identity()` hash from the five scripts, execs each in
+  isolation (they exit at import), and asserts the shared pieces are identical
+  where duplicated and behave the same against one secret/safe corpus. Proven to
+  catch drift (reintroduced the fixed drift and watched it fail). Runs under the
+  existing CI glob, no workflow change.
+- **Fixed a real `SECRET_KEY` drift** the test surfaced: the write guard matched
+  `AUTHORIZATION`/`COOKIE` while the config scan matched `AUTH`/`BEARER`.
+  Reconciled both to the union (`AUTH` subsumes `AUTHORIZATION`; `BEARER` and
+  `COOKIE` kept), so a credential-shaped key name is caught the same on both
+  paths.
+- **Folded `mcp-globals` into `mcp-secure`** (the one pre-1.0 structural change,
+  done before release on purpose). It was a second, never-installed
+  `defaultEnabled: false` template plugin, and `always-on` pointed at it "in the
+  marketplace repo", which plugin-install users never have on disk. Now a bundled
+  scaffold at `plugins/mcp-secure/templates/globals-profile/`, stamped out by
+  `/mcp-secure:always-on`. Marketplace lists one plugin; all refs updated; old
+  dir deleted.
 
-Next session, in order (Gate 2 toward v1.0):
+Next session, in order (Gate 2 remaining toward v1.0):
 
-1. **Chase the cloudflare 403** (the one carried-over thread): `mcp-pin` can't
-   list tools at `mcp.cloudflare.com` with the headersHelper token, yet sessions
-   connect (likely OAuth-store auth plus a stale/underscoped helper token).
-   Either fix the token or drop the helper, accepting the documented no-pin gap.
-2. **Gate 2 hardening** (see the Gate 2 section below): the real GitHub exemplar
-   bundle replacing the `example-secret` placeholder, the keep-in-sync CI test
-   for the duplicated regexes/identity, and the README release-integrity section.
+1. **Chase the cloudflare 403** (carried-over thread): `mcp-pin` can't list tools
+   at `mcp.cloudflare.com` with the headersHelper token, yet sessions connect
+   (likely OAuth-store auth plus a stale/underscoped helper token). Time-box it:
+   fix the token or drop the helper and document the no-pin gap.
+2. **GitHub exemplar bundle** (Gate 2 item 1): replace the `example-secret`
+   placeholder with ONE real, exact-pinned, secret-backed bundle so the
+   `mcp-launch` reference pattern has a live demonstration. Keep `frontend.json`;
+   3-4 bundles total, framed as exemplars, never a catalog.
+3. **README repositioning** (Gate 2 item 3): ease-first hero, positioned against
+   the incumbents' costs (no cloud, no containers, no gateway); document that the
+   nudge appears in Claude's first reply.
+4. **Release integrity** (Gate 2 item 4): signed/verified tags plus a "verify
+   what you installed" section.
+
+Then Gate 3: full clean-machine dogfood, tag v1.0.0, submit to the community
+marketplace.
 
 Optional dogfood fodder: migrate the portainer-stdio wrapper (`--arg`, still no
 real-world user) and slim the headers scripts to `mcp-secret` one-liners.
@@ -131,11 +148,12 @@ published the GitHub release. Next release is v0.5.0 or v1.0.0 after Gate 2.
    exact-pinned, vet date recorded) so the `mcp-launch` reference pattern has a
    live demonstration. Keep `frontend.json`. 3-4 bundles total, presented as
    *exemplars of the pattern* in the README, never as a curated catalog.
-2. **Keep-in-sync CI test (S).** Assert the `SECRET_VAL`/`SECRET_KEY`/
-   `SAFE_VAL` regexes and the `identity()` scheme are byte-identical across
-   their five copies (mcp-guard.py, mcp-call-guard.py, mcp-nudge.py,
-   mcp-doctor, mcp-pin). This duplication is the most likely future-bug site;
-   the test makes the "keep in sync" comments enforceable.
+2. **Keep-in-sync CI test (S). ✅ DONE (2026-07-03).** `tests/test_keep_in_sync.py`
+   asserts the `SECRET_VAL`/`SECRET_KEY`/`SAFE_VAL` regexes and the `identity()`
+   scheme match across their copies (guard, call-guard, nudge, doctor, pin) and
+   behave the same against a shared corpus. It surfaced a real `SECRET_KEY` drift
+   (guard `AUTHORIZATION`/`COOKIE` vs doctor `AUTH`/`BEARER`), now reconciled to
+   the union. The "keep in sync" comments are enforceable.
 3. **README repositioning (S).** Lead with "the easiest way to give Claude
    tools, safe by default"; convenience is the hook, security the
    trust-builder. Position explicitly against the incumbents' costs (no cloud,
