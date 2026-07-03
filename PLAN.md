@@ -16,6 +16,50 @@ requests. Ship before the gap closes.
 [CHANGELOG.md](CHANGELOG.md). Completed milestone detail (v0.4–v0.6) was
 removed from this file 2026-07-02 — see CHANGELOG and git history.
 
+## Status (2026-07-02 end of session) & next session
+
+Gate 1 is roughly half done. Completed today, all in real sessions:
+
+- **Audit flow on real config** — clean except cloudflare (below); opnsense
+  migrated wrapper→`mcp-launch` + `sops://` refs in BOTH repos (this one and
+  homelab), re-pinned (144 tools), stale pin removed, wrapper + setup script
+  retired in homelab (`8ce6a27`). Also now version-pinned (`@0.11.0` via npx).
+- **Item 6 (HTTP pinning)**: homeassistant + portainer verified over
+  streamable HTTP via `headersHelper`; slack correctly reported as the
+  OAuth-store gap. ✅
+- **Item 1 (exfil guard)** silent all session — warranted. Keep watching.
+- **Item 5 (nudge)**: fires correctly; two findings recorded below. ✅
+- **unpin name-collision bug** found by the migration, fixed + regression
+  test (`47552c6`). Exactly what the gate exists for.
+
+Next session, in order:
+
+1. **Confirm the migrated opnsense entry works live** — new config only
+   loads on a fresh session (this session still ran the old wrapper).
+2. **Item 3 (break a tool):** rename `OPNSENSE_API_KEY` in
+   `~/src/homelab/secrets/network.sops.yaml` → say "the opnsense tool is
+   broken" → fix flow should route and `mcp-doctor --launch` should name the
+   real cause. Restore the key after.
+3. **Item 4 (update flow):** ask "are my tools up to date?" —
+   playwright@0.0.76 is almost certainly behind; expect a tool-diff preview
+   and clean re-pin.
+4. **Item 2 (tripwire):** first call to an unpinned, pinnable server must ask
+   exactly once per session. Vehicle: homelab's `contextforge`
+   (headersHelper-based, unpinned). OAuth-shaped cloudflare/slack must stay
+   silent.
+5. **Chase the cloudflare 403** from the audit: `mcp-pin` can't list tools at
+   `mcp.cloudflare.com` with the headersHelper token, yet sessions connect —
+   likely OAuth-store auth in Claude Code and a stale/underscoped token in
+   the helper. Either fix the token or drop the helper (accepting the
+   documented no-pin gap).
+6. **If 1–5 are clean → stage v0.5.0** (bump plugin.json, date CHANGELOG,
+   tag, GitHub release).
+
+Optional dogfood fodder while working: migrate the remaining wrappers
+(unifi `--secret`, portainer-stdio `--arg`) and slim the four headers scripts
+to `mcp-secret` one-liners — each exercises a path the opnsense migration
+didn't (`--arg` has no real-world user yet).
+
 ## Descoped 2026-07-02 (do not re-add before 1.0)
 
 - **Bundle catalog** (was "~10 vetted bundles, ongoing"). Catalogs are the
