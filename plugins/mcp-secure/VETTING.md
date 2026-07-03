@@ -1,7 +1,7 @@
 # Vetting a new MCP server
 
 Run this before adding any MCP server you haven't used before. `/mcp-secure:add`
-walks you through it; this file is the standard it enforces — nothing new gets
+walks you through it; this file is the standard it enforces. Nothing new gets
 into config without a deliberate, security-first look. (Why: the two failure
 modes are a credential baked into config where it persists and can reach the
 model's context, and an unvetted/unpinned server pulling untrusted code into
@@ -9,7 +9,7 @@ your agent's tool surface.)
 
 ## Checklist
 
-0. **Auth model first.** Prefer OAuth / remote auth — Claude Code runs the flow
+0. **Auth model first.** Prefer OAuth / remote auth. Claude Code runs the flow
    and stores the token itself, so there's **no static secret at all**. Only fall
    back to a token (step 5) when OAuth isn't an option.
    *Caveat:* Claude Code auto-registers via Dynamic Client Registration
@@ -20,7 +20,7 @@ your agent's tool surface.)
    (Known SDK bug: Claude Code may attempt DCR before honoring a provided
    clientId.)
 
-1. **Provenance.** Who publishes it — official vendor or third party? Find the
+1. **Provenance.** Who publishes it, official vendor or third party? Find the
    source repo; check activity and last release. Flag typosquats, no public
    source, abandonment.
 
@@ -34,7 +34,7 @@ your agent's tool surface.)
 4. **Transport.** Prefer local `stdio`. For `http`, require TLS and verify the
    exact domain; plain `http://` to anything non-local is a red flag.
 
-5. **Secrets — never inline.** If it needs a token: store it in your backend and
+5. **Secrets, never inline.** If it needs a token: store it in your backend and
    launch via `mcp-launch` with a *reference*:
    ```json
    { "command": "mcp-launch",
@@ -42,19 +42,19 @@ your agent's tool surface.)
    ```
    Use `--arg FLAG=ref` only when the server takes the secret solely as a CLI
    flag (argv is visible in `ps`; env is not). The guard hook blocks literal
-   secrets anyway — the point is to never write one.
+   secrets anyway. The point is to never write one.
 
 6. **Network egress.** Know where it phones home. A "local" server with
    unexpected outbound connections deserves scrutiny.
 
 7. **Tool integrity (poisoning & rug-pulls).** Tool *descriptions* are injected
    into the model's context, so a malicious description can carry hidden
-   instructions without the tool ever being called — and a server can change its
+   instructions without the tool ever being called, and a server can change its
    descriptions *after* approval (e.g. the Sept 2025 Postmark incident). So:
-   read the actual tool descriptions, not just the README — hidden instructions,
+   read the actual tool descriptions, not just the README. Hidden instructions,
    "ignore previous", or requests to read files/env are disqualifying; pin the
    version (step 2); re-vet on every version bump (`/mcp-secure:update` walks
-   this — it diffs the new version's tools before adopting). See the OWASP MCP
+   this. It diffs the new version's tools before adopting). See the OWASP MCP
    Top 10.
 
 8. **Record it.** Add the vetted config to a bundle (references only) so the
@@ -64,12 +64,12 @@ your agent's tool surface.)
 
 - **Install-time supply chain.** `npx`/`uvx`/`pip` fetches are the attack
   surface. [Socket Firewall](https://github.com/SocketDev/sfw-free) (`sfw`,
-  free, tokenless) blocks confirmed-malicious packages — run the first fetch
+  free, tokenless) blocks confirmed-malicious packages. Run the first fetch
   under it: `sfw npx -y <pkg>@<ver>`. (No custom/private registry support.)
 - **Optional deeper scanners** (point-in-time poisoning scans):
-  [Cisco `mcp-scanner`](https://github.com/cisco-ai-defense/mcp-scanner) —
+  [Cisco `mcp-scanner`](https://github.com/cisco-ai-defense/mcp-scanner):
   local-first, CI-friendly, best fit for this harness's no-egress principle;
-  [Snyk `agent-scan`](https://github.com/snyk/agent-scan) — broadest coverage
+  [Snyk `agent-scan`](https://github.com/snyk/agent-scan): broadest coverage
   but needs a `SNYK_TOKEN` and sends tool descriptions to Snyk's API.
 
 ## Removing a server (the other end of the lifecycle)
@@ -77,5 +77,5 @@ your agent's tool surface.)
 A token for a tool nobody uses is a forgotten credential waiting to leak.
 `/mcp-secure:remove` walks it: **unregister** from its scope, **revoke/rotate
 the token** at the provider and delete the vault item (unless another tool still
-references it — this is the step people forget), and **drop its pin**
+references it, this is the step people forget), and **drop its pin**
 (`mcp-pin unpin` / `prune`).

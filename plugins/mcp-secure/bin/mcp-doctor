@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
-"""mcp-doctor — health-check the MCP secret chain.
+"""mcp-doctor: health-check the MCP secret chain.
 
 Verifies, for the current setup:
   - mcp-secret / mcp-launch are reachable
   - the configured secret backend CLI is installed and authenticated
   - every secret reference in your MCP config(s) actually resolves
 
-References are resolved by calling mcp-secret; this NEVER prints secret values —
+References are resolved by calling mcp-secret; this NEVER prints secret values,
 only the reference and pass/fail. Exits non-zero if anything fails.
 
 Usage: mcp-doctor [--launch] [config.json ...]
   Defaults to ./.mcp.json and ~/.claude.json when no paths are given.
   --launch additionally spawns each stdio server briefly (via `mcp-pin tools`)
-  and reports whether it starts and speaks MCP — with the server's own stderr
+  and reports whether it starts and speaks MCP, with the server's own stderr
   when it doesn't. The troubleshooting mode /mcp-secure:fix uses.
 """
 import json
@@ -44,13 +44,13 @@ head("tooling")
 if mcp_secret:
     ok(f"mcp-secret: {mcp_secret}")
 else:
-    bad("mcp-secret not found — run install.sh"); fails += 1
+    bad("mcp-secret not found. Run install.sh"); fails += 1
 if mcp_launch:
     ok(f"mcp-launch: {mcp_launch}")
 else:
-    warn("mcp-launch not on PATH — project .mcp.json servers using it won't spawn")
+    warn("mcp-launch not on PATH. Project .mcp.json servers using it won't spawn")
 if shutil.which("sfw"):
-    ok("sfw present (Socket Firewall — install-time package protection)")
+    ok("sfw present (Socket Firewall, install-time package protection)")
 else:
     tip("optional: 'npm i -g sfw' to block malicious packages when installing MCP servers")
 
@@ -71,7 +71,7 @@ if os.path.exists(org_path):
             tip(f"recommended bundles: {', '.join(org['recommended'])}")
         gw = (org.get("gateway") or {}).get("url")
         if gw:
-            tip(f"org gateway (info only — routing not enforced): {gw}")
+            tip(f"org gateway (info only, routing not enforced): {gw}")
 
 # --- secret backend ---
 cfg_path = os.path.expanduser(os.environ.get("MCP_SECRET_CONFIG", "~/.config/mcp-secret/config"))
@@ -90,12 +90,12 @@ BACKENDS_DOC = "secure setup: plugins/mcp-secure/BACKENDS.md"
 def install_hint(*pkgs):
     if HAVE_BREW:
         return f"install: brew install {' '.join(pkgs)}"
-    return f"install {', '.join(pkgs)} from the official source — {BACKENDS_DOC}"
+    return f"install {', '.join(pkgs)} from the official source: {BACKENDS_DOC}"
 
 head("secret backend")
 if not backend:
     warn(f"no default backend in {cfg_path} (only fully-qualified refs will resolve)")
-    tip(f"pick one (1Password / Bitwarden / SOPS) — {BACKENDS_DOC}")
+    tip(f"pick one (1Password / Bitwarden / SOPS): {BACKENDS_DOC}")
 else:
     ok(f"default backend: {backend}")
     if backend == "op":
@@ -115,9 +115,9 @@ else:
         if os.environ.get("SOPS_AGE_KEY") or os.path.exists(keyfile):
             ok("age key present")
         else:
-            warn(f"no age key at {keyfile} or $SOPS_AGE_KEY — decryption will fail")
+            warn(f"no age key at {keyfile} or $SOPS_AGE_KEY. Decryption will fail")
             tip("generate one: `age-keygen -o ~/.config/sops/age/keys.txt && chmod 600 "
-                "~/.config/sops/age/keys.txt` (or re-run install.sh) — never commit it")
+                "~/.config/sops/age/keys.txt` (or re-run install.sh). Never commit it")
     elif backend == "bw":
         if not shutil.which("bw"):
             bad("bw CLI not installed"); fails += 1
@@ -137,7 +137,7 @@ else:
             warn("jq not installed (needed for bw refs)"); tip(install_hint("jq"))
 
 
-# Literal-secret detection for EXISTING config (mirrors mcp-guard.py — keep in sync).
+# Literal-secret detection for EXISTING config (mirrors mcp-guard.py, keep in sync).
 # The guard stops new secrets going in; this catches ones already sitting in config.
 _SECRET_KEY = re.compile(
     r"(TOKEN|SECRET|PASSWORD|PASSWD|APIKEY|API_KEY|ACCESS_KEY|PRIVATE_KEY|"
@@ -165,7 +165,7 @@ def inline_secrets(spec):
     """Literal secrets sitting in a server's env/args (not a reference).
 
     env uses the key+value heuristic (env names like GITHUB_TOKEN are meaningful).
-    args are matched on value SHAPE only — a CLI flag name like `--secret` is not a
+    args are matched on value SHAPE only. A CLI flag name like `--secret` is not a
     reliable key, and `mcp-launch --secret NAME=op://…` must not be mistaken for a
     leak. A credential-shaped value (`ghp_…`, `sk-…`, `user:pass@`) is caught
     wherever it sits; a reference (`op://…`) is not.
@@ -249,14 +249,14 @@ if not paths:
 elif not collected:
     ok("no secret references found in configs")
 elif not mcp_secret:
-    bad("can't resolve references — mcp-secret missing"); fails += 1
+    bad("can't resolve references, mcp-secret missing"); fails += 1
 else:
     for name, ref in collected:
         r = subprocess.run([mcp_secret, ref], capture_output=True, text=True)
         if r.returncode == 0 and r.stdout.strip():
             ok(f"{name}: {ref}")
         else:
-            bad(f"{name}: {ref} — {r.stderr.strip() or 'empty/failed'}"); fails += 1
+            bad(f"{name}: {ref}, {r.stderr.strip() or 'empty/failed'}"); fails += 1
 
 # --- optional: actually launch each stdio server and speak MCP to it ---
 if LAUNCH:
@@ -266,7 +266,7 @@ if LAUNCH:
     launched = 0
     for name, spec in all_servers:
         if spec.get("type") in ("http", "sse") or spec.get("url"):
-            tip(f"{name}: remote — no local launch; `mcp-pin verify {name}` checks it over HTTP")
+            tip(f"{name}: remote, no local launch; `mcp-pin verify {name}` checks it over HTTP")
             continue
         cmd = os.path.expandvars(spec.get("command", ""))
         args = [os.path.expandvars(a) if isinstance(a, str) else a
@@ -294,11 +294,11 @@ if LAUNCH:
             bad(f"{name}: {msg[-1].strip() if msg else 'failed to launch'}"); fails += 1
             low = " ".join(msg).lower()
             if "no such file" in low or "not found" in low:
-                tip("the command isn't installed/on PATH — is its runtime (node/npx, uvx) present?")
+                tip("the command isn't installed/on PATH. Is its runtime (node/npx, uvx) present?")
             if "unresolved ${" in low:
-                tip("config uses ${…} the shell can't expand here — plugin-scope server?")
+                tip("config uses ${…} the shell can't expand here. Plugin-scope server?")
             if "failed to resolve" in low:
-                tip("a secret reference didn't resolve — run the checks above / see BACKENDS.md")
+                tip("a secret reference didn't resolve. Run the checks above / see BACKENDS.md")
     if launched == 0:
         info("no stdio servers to launch")
 

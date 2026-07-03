@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# mcp-launch — generic MCP server launcher that injects secrets at spawn.
+# mcp-launch: generic MCP server launcher that injects secrets at spawn.
 #
 # Replaces per-server wrapper scripts. Claude Code runs this AS the server's
 # command; it resolves each secret *reference* via mcp-secret (never a literal),

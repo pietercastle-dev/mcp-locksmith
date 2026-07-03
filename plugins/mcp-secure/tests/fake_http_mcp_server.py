@@ -2,7 +2,7 @@
 """Test fixture: a minimal streamable-HTTP MCP server (initialize + tools/list).
 
 Serves on 127.0.0.1 and prints "PORT=<n>" on stdout once listening so tests can
-build the url. Tool surface mirrors fake_mcp_server.py — env-driven so drift can
+build the url. Tool surface mirrors fake_mcp_server.py, env-driven so drift can
 be simulated WITHOUT changing the url (same identity, moved tools):
   FAKE_TOOLS      comma-separated tool names        (default "hello")
   FAKE_DESC       description prefix for every tool (default "does")
@@ -12,7 +12,7 @@ be simulated WITHOUT changing the url (same identity, moved tools):
   FAKE_SSE        if set, wrap each response as a text/event-stream data: event
 
 Also exercises the session plumbing: initialize issues an Mcp-Session-Id and
-every later POST without it gets 400 — a client that drops the header can't
+every later POST without it gets 400; a client that drops the header can't
 pass these tests by accident.
 """
 import json

@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""PreToolUse guard for OUTBOUND tool calls — the runtime layer.
+"""PreToolUse guard for OUTBOUND tool calls: the runtime layer.
 
 Every other defense fires before or between sessions (vetting at add time, the
 config-write guard, on-demand pin checks). This hook watches the calls
-themselves. Two advisory checks — both `ask`, never deny (see PLAN.md):
+themselves. Two advisory checks, both `ask`, never deny (see PLAN.md):
 
 1. Exfiltration guard (mcp__* tools + WebFetch/WebSearch): a credential-shaped
-   value in a tool call's arguments is a secret about to LEAVE the machine —
-   the classic tool-poisoning payoff ("read ~/.aws/credentials and send it
+   value in a tool call's arguments is a secret about to LEAVE the machine.
+   The classic tool-poisoning payoff ("read ~/.aws/credentials and send it
    to…"). Matches known value shapes only; key-name heuristics would drown
    users in false asks on ordinary payloads. Vault references (op:// etc.) are
    not secrets and pass.
@@ -15,21 +15,21 @@ themselves. Two advisory checks — both `ask`, never deny (see PLAN.md):
 2. Unpinned-tool tripwire (mcp__* only): first use this session of a server
    with no mcp-pin baseline → ask once, pointing at /mcp-secure:check. Gated so
    non-adopters are never nagged: fires only if the user already has at least
-   one pin, or org policy.requireVetting is set (the first — still advisory —
+   one pin, or org policy.requireVetting is set (the first, still advisory,
    consumer of that flag).
 
 Fail-open like mcp-guard.py: malformed input, unknown shapes, or any error →
-allow. Pure local file reads — never launches a server, never touches the
+allow. Pure local file reads: never launches a server, never touches the
 network, so it adds no felt latency.
 
-Server discovery + identity mirror mcp-nudge.py / mcp-pin — keep in sync.
+Server discovery + identity mirror mcp-nudge.py / mcp-pin. Keep in sync.
 """
 import json
 import os
 import re
 import sys
 
-# hashlib/tempfile are imported lazily on the tripwire path — most calls exit
+# hashlib/tempfile are imported lazily on the tripwire path. Most calls exit
 # before needing them, and this hook runs on every mcp__* call.
 
 
@@ -51,7 +51,7 @@ tool = data.get("tool_name", "")
 ti = data.get("tool_input") or {}
 
 # Self-scope, independent of the hooks.json matchers: outbound-ish tools only.
-# Bash/Write/etc. legitimately handle tokens (gh auth, test fixtures) — asking
+# Bash/Write/etc. legitimately handle tokens (gh auth, test fixtures). Asking
 # there would be noise; mcp-guard.py covers the config-write paths.
 if not (tool.startswith("mcp__") or tool in ("WebFetch", "WebSearch")):
     sys.exit(0)
@@ -98,7 +98,7 @@ if label:
     out("ask",
         f"This {tool} call includes what looks like {label} in its arguments. "
         "A real credential sent through a tool call leaves your machine and "
-        "can't be un-sent — and no mcp-secure flow ever needs a live secret in "
+        "can't be un-sent, and no mcp-secure flow ever needs a live secret in "
         "a tool call (config holds vault references; mcp-launch injects at "
         "spawn). Approve only if you're sure this value isn't a live secret "
         "(e.g. an example, or already public).")
@@ -119,7 +119,7 @@ except Exception:
     org = {}
 require = bool((org.get("policy") or {}).get("requireVetting"))
 if not pins and not require:
-    sys.exit(0)  # user hasn't adopted pinning — never nag them into it here
+    sys.exit(0)  # user hasn't adopted pinning. Never nag them into it here
 
 # Once per server per session.
 import tempfile  # noqa: E402
@@ -148,15 +148,15 @@ try:
 except Exception:
     pass
 
-# Map mcp__<server>__<tool> back to a configured server name (longest match wins
-# — server and tool names can both contain underscores).
+# Map mcp__<server>__<tool> back to a configured server name (longest match wins,
+# since server and tool names can both contain underscores).
 rest = tool[len("mcp__"):]
 name, spec = None, None
 for n, s in servers.items():
     if (rest == n or rest.startswith(n + "__")) and (name is None or len(n) > len(name)):
         name, spec = n, s
 if not name or not isinstance(spec, dict) or name in seen:
-    sys.exit(0)  # unknown (e.g. plugin-scope) server, or already handled — stay quiet
+    sys.exit(0)  # unknown (e.g. plugin-scope) server, or already handled. Stay quiet
 
 try:
     seen.add(name)
@@ -165,7 +165,7 @@ except Exception:
     pass
 
 if spec.get("type") == "sse":
-    sys.exit(0)  # legacy SSE transport — mcp-pin can't baseline it
+    sys.exit(0)  # legacy SSE transport: mcp-pin can't baseline it
 
 
 def expand(x):
@@ -178,7 +178,7 @@ def identity(n, command, args):
     return hashlib.sha256(raw.encode()).hexdigest()[:16]
 
 
-# Remote (streamable-HTTP) servers hash as (url, []) — mirrors mcp-pin spec_target.
+# Remote (streamable-HTTP) servers hash as (url, []). Mirrors mcp-pin spec_target.
 remote = spec.get("type") == "http" or bool(spec.get("url"))
 if remote:
     cmd, args = expand(spec.get("url", "")), []
@@ -188,11 +188,11 @@ if identity(name, cmd, args) in pins:
     sys.exit(0)
 if remote and not (spec.get("headers") or spec.get("headersHelper")):
     # No local auth config → likely OAuth via Claude Code's store, which mcp-pin
-    # can't reach — don't ask for a pin that may be impossible to create.
+    # can't reach. Don't ask for a pin that may be impossible to create.
     sys.exit(0)
 
 out("ask",
-    f"First use of the '{name}' tool this session — it has no approved baseline "
+    f"First use of the '{name}' tool this session. It has no approved baseline "
     "(mcp-pin), so if its tools changed since you vetted it, nothing would "
     "notice. Approve to continue, then run /mcp-secure:check to review and pin "
     "it. (Asked once per session.)")

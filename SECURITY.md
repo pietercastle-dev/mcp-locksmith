@@ -3,7 +3,7 @@
 mcp-locksmith is a security tool, so it is explicit about what it protects
 against, what it does **not**, and how it expects to be trusted and updated.
 
-## Threat model — what it defends against
+## Threat model: what it defends against
 
 1. **Secrets in config / context.** Config holds only *references*, resolved at
    spawn; a PreToolUse guard blocks the common ways a literal secret would get
@@ -15,16 +15,16 @@ against, what it does **not**, and how it expects to be trusted and updated.
    unpinned server (only when pinning is in use or org policy requires vetting).
    Covers stdio and streamable-HTTP servers (using the config's
    `headers`/`headersHelper`). Labeled gap: a remote server that authenticates
-   via Claude Code's OAuth store can't be baselined — that token isn't readable
-   from outside — so the hooks stay quiet about those rather than nag toward
+   via Claude Code's OAuth store can't be baselined (that token isn't readable
+   from outside) so the hooks stay quiet about those rather than nag toward
    the impossible.
-4. **Secret exfiltration through tool calls.** A runtime hook asks — never
-   denies — when a credential-shaped value appears in an outbound tool call's
+4. **Secret exfiltration through tool calls.** A runtime hook asks (never
+   denies) when a credential-shaped value appears in an outbound tool call's
    arguments (the classic tool-poisoning payoff). Known shapes only; fail-open.
 5. **Install-time supply chain.** Optional Socket Firewall (`sfw`) blocks
    known-malicious packages during a server's first fetch.
 
-## Trust model & non-goals — what it does NOT do
+## Trust model & non-goals: what it does NOT do
 
 **Installing this plugin is a trust decision.** Its hooks run on every
 `PreToolUse`, and `install.sh` puts `mcp-secret` / `mcp-launch` on your `PATH`,
@@ -47,9 +47,9 @@ It is **defense-in-depth, not a sandbox.** It does **not**:
 ## Pinning & updating the plugin
 
 `install.sh` **symlinks** the helpers, so a `git pull` silently swaps in new
-code that runs with secret-resolution access — updates are an implicit re-trust.
+code that runs with secret-resolution access. Updates are an implicit re-trust.
 Stay in control: **pin to a tagged release** (clone, `git checkout v0.x.y`, add
-the marketplace from that path, run `install.sh` from it — the symlinks then
+the marketplace from that path, run `install.sh` from it. The symlinks then
 track the tag), **review diffs before updating** (especially `hooks/` and
 `bin/`), and verify you cloned the real repo:
 `github.com/pietercastle-dev/mcp-locksmith`.
@@ -58,6 +58,6 @@ track the tag), **review diffs before updating** (especially `hooks/` and
 
 Report **privately**: GitHub's private vulnerability reporting on this repo
 (Security → "Report a vulnerability"), or a minimal public issue asking for a
-private channel — without details. Include description, impact, and a
+private channel, without details. Include description, impact, and a
 reproduction. We aim to acknowledge within a few days and credit reporters who
 want it.

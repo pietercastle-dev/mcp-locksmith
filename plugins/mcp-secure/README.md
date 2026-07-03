@@ -5,9 +5,9 @@
 > come back here for the design details.
 
 A Claude Code plugin that makes MCP servers **secret-safe by default**:
-credentials are resolved at spawn from your vault, never stored in config, never
-reach the model's context — plus a vetting flow for new servers and guard hooks
-against the common leak vectors.
+credentials are resolved at spawn from your vault, never stored in config, and
+never reach the model's context. It also adds a vetting flow for new servers and
+guard hooks against the common leak vectors.
 
 ## What it provides
 
@@ -19,7 +19,7 @@ against the common leak vectors.
 | `bin/mcp-pin` | Pins each server's tool definitions and detects drift (rug-pull defense). |
 | `bin/mcp-bundles` | Lists bundle dirs (shipped + private) for `/mcp-secure:add`. |
 | `commands/` | `setup`, `add`, `update`, `fix`, `remove`, `audit`, `always-on`, `check`, `verify` (see the top README's table). |
-| `skills/` | `add-tool` / `update-tool` / `fix-tool` / `remove-tool` / `audit-tools` — route plain-language requests to the commands. |
+| `skills/` | `add-tool` / `update-tool` / `fix-tool` / `remove-tool` / `audit-tools`, which route plain-language requests to the commands. |
 | `hooks/` | Config guard (blocks literal secrets, confirms global scope), call guard (asks on credential-shaped values in outbound tool calls + first use of an unpinned server), session nudge. |
 | `bundles/` | Vetted, ready-to-add server sets. Private bundles: `~/.config/mcp-secret/bundles/`. |
 | `VETTING.md` / `BACKENDS.md` / `ORG.md` | Vetting checklist / backend setup / optional team config. |
@@ -32,7 +32,7 @@ against the common leak vectors.
 ```
 
 Then run `install.sh` from the cloned repo once (puts the resolver on PATH,
-records your default backend) — needed only for secret-backed servers.
+records your default backend). This is needed only for secret-backed servers.
 
 ## How secrets work
 
@@ -48,13 +48,13 @@ Config holds a **reference**, resolved at launch:
 ```
 
 `mcp-launch` resolves each `--secret NAME=ref` (or `--arg FLAG=ref` for
-flag-only servers — prefer `--secret`: argv is visible in `ps`, env is not) via
-`mcp-secret`, injects it, and execs the server.
+flag-only servers; prefer `--secret`, since argv is visible in `ps` and env is
+not) via `mcp-secret`, injects it, and execs the server.
 
 **Reference forms**
 
 ```
-cloudflare/token            # short ref → machine default backend
+cloudflare/token            # short ref -> machine default backend
 op://Work/cloudflare/token  # 1Password (explicit)
 sops://~/secrets.sops.yaml#/cloudflare/token
 bw://cloudflare/token       # Bitwarden
@@ -68,16 +68,16 @@ one config is portable across work/home.
 header, use a `headersHelper` that prints it as JSON, e.g.
 `printf '{"Authorization":"Bearer %s"}\n' "$(mcp-secret op://Work/x/token)"`.
 
-## Adding servers — the priority order
+## Adding servers, in priority order
 
-1. **OAuth-capable?** Use it — no static secret (`/mcp-secure:add` checks this first).
+1. **OAuth-capable?** Use it, with no static secret (`/mcp-secure:add` checks this first).
 2. **Token-only?** `mcp-launch` + a backend ref.
-3. **Guard hook** is the backstop — denies literal secrets in any `.mcp.json`,
-   asks before a global (`-s user`) add.
+3. **Guard hook** is the backstop. It denies literal secrets in any `.mcp.json`
+   and asks before a global (`-s user`) add.
 
 ## Tool pinning (rug-pull defense)
 
-A server can change its tool descriptions *after* you approve it — and tool
+A server can change its tool descriptions *after* you approve it, and those
 descriptions are injected into the model's context. `mcp-pin` defends locally:
 
 ```sh
@@ -86,15 +86,15 @@ mcp-pin verify    # re-check; flags DRIFT if a server's tools changed
 mcp-pin list / unpin <name> / prune
 ```
 
-It discovers servers from `./.mcp.json` and `~/.claude.json`, reads each
-server's `tools/list` over the MCP protocol — stdio *and* streamable HTTP (the
+It discovers servers from `./.mcp.json` and `~/.claude.json` and reads each
+server's `tools/list` over the MCP protocol (stdio *and* streamable HTTP; the
 config's `headers`/`headersHelper` are honored, so a server that connects in a
-session authenticates identically here) — and hashes each tool's
+session authenticates identically here), then hashes each tool's
 name/description/schema. Pins live at `~/.config/mcp-secret/pins.json`, keyed by
-server identity (name + command + args, or name + url) — a version bump reads as
-"new, re-pin". **Known gap, labeled honestly:** a remote server that
+server identity (name + command + args, or name + url), so a version bump reads
+as "new, re-pin". **Known gap, labeled honestly:** a remote server that
 authenticates via Claude Code's OAuth store can't be pinned (that token isn't
-ours to read) — `mcp-pin` says so on a 401, and the nudge/tripwire stay quiet
+ours to read), so `mcp-pin` says so on a 401, and the nudge/tripwire stay quiet
 about such servers instead of nagging you toward the impossible. Legacy
 `type: "sse"` servers are skipped with a note. `verify` stamps `lastVerified`;
 the session nudge warns when pinned tools haven't been drift-checked in
@@ -107,22 +107,23 @@ tools against the current ones **before** the config changes (`mcp-pin tools --
 
 ## Optional: install-time firewall
 
-MCP servers usually launch via `npx`/`uvx` — a supply-chain surface.
+MCP servers usually launch via `npx`/`uvx`, which is a supply-chain surface.
 [Socket Firewall](https://github.com/SocketDev/sfw-free) (`sfw`, free, tokenless)
 blocks known-malicious packages; run a new server's first fetch under it:
 `sfw npx -y some-mcp@1.2.3`. Wrapping *all* your installs (shell aliases) is a
-personal opt-in — note aliases only fire in interactive shells and `sfw` doesn't
-support custom/private registries. The harness never edits your rc for you.
+personal opt-in; note that aliases only fire in interactive shells, and `sfw`
+doesn't support custom/private registries. The harness never edits your rc for
+you.
 
 ## Security model
 
-- **At rest:** config holds references and `mcp-launch` invocations — no secrets.
+- **At rest:** config holds references and `mcp-launch` invocations, never secrets.
 - **In context:** secrets resolve in a subprocess; values never return to the
   model. The guard denies literal secrets written into MCP config via
-  `claude mcp add`/`add-json`/`import`, shell redirects/tee, or Write/Edit —
+  `claude mcp add`/`add-json`/`import`, shell redirects/tee, or Write/Edit,
   including secrets tucked in `args` arrays.
 - **At runtime:** a second hook watches outbound calls (`mcp__*` tools,
-  WebFetch/WebSearch) and `ask`s — never denies — when a credential-shaped value
+  WebFetch/WebSearch) and `ask`s (never denies) when a credential-shaped value
   is in the arguments (exfiltration, the tool-poisoning payoff), or on the first
   use per session of a server with no pin baseline (gated: only if you use
   pinning, or org `policy.requireVetting` is set). Pure local reads, no latency.

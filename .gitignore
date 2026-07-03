@@ -1,4 +1,4 @@
-# This is a plugin/marketplace repo — a consumed .mcp.json must never live at the
+# This is a plugin/marketplace repo: a consumed .mcp.json must never live at the
 # root here (it would leak whoever-ran-it's server topology). Anchored so the tracked
 # plugins/mcp-globals/.mcp.json template is unaffected.
 /.mcp.json

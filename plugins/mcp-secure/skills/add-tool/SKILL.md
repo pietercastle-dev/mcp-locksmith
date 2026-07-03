@@ -1,9 +1,9 @@
 ---
 name: add-tool
-description: Add, connect, install, or set up an external tool / MCP server for Claude — e.g. "add a Slack tool", "connect my Postgres database", "set up the GitHub MCP", "give Claude a browser", "integrate Linear". Use whenever the user wants Claude to gain a new capability or integration. Handles both ready-made tools and brand-new ones, keeps API keys in a vault (never in config or chat), and safety-checks new servers first.
+description: Add, connect, install, or set up an external tool / MCP server for Claude, e.g. "add a Slack tool", "connect my Postgres database", "set up the GitHub MCP", "give Claude a browser", "integrate Linear". Use whenever the user wants Claude to gain a new capability or integration. Handles both ready-made tools and brand-new ones, keeps API keys in a vault (never in config or chat), and safety-checks new servers first.
 ---
 
-The user wants to add an external tool (an MCP server). **Do not wire it up ad hoc** —
+The user wants to add an external tool (an MCP server). **Do not wire it up ad hoc**:
 run the mcp-secure *add* flow so it's done safely.
 
 Authoritative steps: read and follow `${CLAUDE_PLUGIN_ROOT}/commands/add.md` in this

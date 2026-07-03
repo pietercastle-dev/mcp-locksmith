@@ -17,10 +17,10 @@ CASES = [
     ("Bash: add -e literal ghp secret", {"tool_name": "Bash", "tool_input": {"command": f"{A} foo -e GITHUB_TOKEN=ghp_EXAMPLEONLYnotarealtoken00 -- bar"}}, "deny"),
     ("Bash: add -e ${VAR} (safe)",      {"tool_name": "Bash", "tool_input": {"command": f"{A} foo -e API_TOKEN=${{MY_TOKEN}} -- bar"}}, "allow"),
     ("Bash: unrelated",                 {"tool_name": "Bash", "tool_input": {"command": "ls -la"}}, "allow"),
-    # add-json payload — secret in the inline JSON, not an -e flag
+    # add-json payload: secret in the inline JSON, not an -e flag
     ("Bash: add-json literal secret",   {"tool_name": "Bash", "tool_input": {"command": f"{A}-json foo '{{\"env\":{{\"TOKEN\":\"ghp_EXAMPLEONLYnotarealtoken00\"}}}}'"}}, "deny"),
     ("Bash: add-json op:// ref (safe)", {"tool_name": "Bash", "tool_input": {"command": f"{A}-json foo '{{\"env\":{{\"TOKEN\":\"op://Work/s/token\"}}}}'"}}, "allow"),
-    # shell redirect / tee into config — bypasses the Write tool entirely
+    # shell redirect / tee into config, bypasses the Write tool entirely
     ("Bash: redirect secret to .mcp.json", {"tool_name": "Bash", "tool_input": {"command": "echo '{\"env\":{\"TOKEN\":\"ghp_EXAMPLEONLYnotarealtoken00\"}}' > .mcp.json"}}, "deny"),
     ("Bash: tee secret to ~/.claude.json", {"tool_name": "Bash", "tool_input": {"command": "echo '{\"key\":\"sk-EXAMPLEONLYnotarealtoken00\"}' | tee ~/.claude.json"}}, "deny"),
     ("Bash: redirect ref to .mcp.json (safe)", {"tool_name": "Bash", "tool_input": {"command": "echo '{\"env\":{\"TOKEN\":\"op://Work/s/token\"}}' > .mcp.json"}}, "allow"),
@@ -40,7 +40,7 @@ CASES = [
     # false-positive regressions: these must NOT be flagged
     (".mcp.json git SHA (not secret)",  {"tool_name": "Write", "tool_input": {"file_path": "/x/.mcp.json", "content": '{"env":{"COMMIT":"a3f1c9e8b2d4f6a8c1e3b5d7f9a1c3e5b7d9f1a3"}}'}}, "allow"),
     (".mcp.json plain https URL",       {"tool_name": "Write", "tool_input": {"file_path": "/x/.mcp.json", "content": '{"env":{"ENDPOINT":"https://api.example.com/v1"}}'}}, "allow"),
-    # escaped-quote value that the flat regex would have truncated — json walk catches it
+    # escaped-quote value that the flat regex would have truncated: json walk catches it
     (".mcp.json escaped-quote secret",  {"tool_name": "Write", "tool_input": {"file_path": "/x/.mcp.json", "content": '{"env":{"X":"ab\\"cd ghp_EXAMPLEONLYnotarealtoken00"}}'}}, "deny"),
     # `claude mcp import` with an inline secret (process substitution)
     ("Bash: mcp import inline secret",  {"tool_name": "Bash", "tool_input": {"command": IMP + " <(printf '{\"x\":\"ghp_EXAMPLEONLYnotarealtoken00\"}')"}}, "deny"),

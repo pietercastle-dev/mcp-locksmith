@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# mcp-locksmith — post-install setup for the mcp-secure plugin.
+# mcp-locksmith: post-install setup for the mcp-secure plugin.
 #
 # The plugin (installed via /plugin install) provides the hooks, commands,
 # bundles, and any global servers. This script does the two things a plugin
 # can't do for you:
 #   1. Put `mcp-secret` and `mcp-launch` on your PATH (~/.local/bin), so a
 #      project's committed .mcp.json can use the bare `mcp-launch` command.
-#   2. Write ~/.config/mcp-secret/config — your default secret backend.
+#   2. Write ~/.config/mcp-secret/config, your default secret backend.
 #
 # Idempotent. Run once per machine (and again if you change backends).
 #   bash install.sh                 # interactive
@@ -24,7 +24,7 @@ info() { printf '\033[1;34m==>\033[0m %s\n' "$*"; }
 warn() { printf '\033[1;33mwarn:\033[0m %s\n' "$*" >&2; }
 
 mkdir -p "$BIN_DIR" "$CFG_DIR"
-chmod 700 "$CFG_DIR"   # the config names your vault/file — keep it owner-only
+chmod 700 "$CFG_DIR"   # the config names your vault/file, keep it owner-only
 
 # 1) Resolver + launcher on PATH (symlinked so `git pull` propagates).
 for b in mcp-secret mcp-launch mcp-bundles mcp-doctor mcp-pin; do
@@ -46,8 +46,8 @@ if [ -e "$CFG" ]; then
   kept_backend="$(grep -E '^[[:space:]]*MCP_SECRET_BACKEND[[:space:]]*=' "$CFG" 2>/dev/null | tail -1 | cut -d= -f2- | tr -d '[:space:]')"
   case "$kept_backend" in
     op|sops|bw) ;;
-    "") warn "no MCP_SECRET_BACKEND in $CFG — short refs won't resolve. Edit it, or 'rm $CFG' and re-run." ;;
-    *)  warn "MCP_SECRET_BACKEND in $CFG is '$kept_backend' — not a valid backend (op/sops/bw). 'rm $CFG' and re-run, or fix it by hand." ;;
+    "") warn "no MCP_SECRET_BACKEND in $CFG. Short refs won't resolve. Edit it, or 'rm $CFG' and re-run." ;;
+    *)  warn "MCP_SECRET_BACKEND in $CFG is '$kept_backend', not a valid backend (op/sops/bw). 'rm $CFG' and re-run, or fix it by hand." ;;
   esac
 elif [ "${#avail[@]}" -eq 0 ]; then
   warn "no secret backend CLI found (op / sops / bw). Install one, then create $CFG."
@@ -58,25 +58,25 @@ else
     printf "Default backend for short refs [%s]: " "${avail[0]}"
     read -r default </dev/tty || true
   fi
-  # Strip stray whitespace, then validate — a backend MUST be op/sops/bw. This
+  # Strip stray whitespace, then validate: a backend MUST be op/sops/bw. This
   # guards against a fat-fingered or pasted answer landing in the config as a
   # bogus backend (which would break every secret resolution).
   default="$(printf '%s' "$default" | tr -d '[:space:]')"
   [ -z "$default" ] && default="${avail[0]}"
   case "$default" in
     op|sops|bw) ;;
-    *) warn "'$default' isn't a known backend (op/sops/bw) — using ${avail[0]} instead."
+    *) warn "'$default' isn't a known backend (op/sops/bw); using ${avail[0]} instead."
        default="${avail[0]}" ;;
   esac
   {
-    echo "# mcp-secret machine config — see the mcp-secure README"
+    echo "# mcp-secret machine config, see the mcp-secure README"
     echo "MCP_SECRET_BACKEND=$default"
     case "$default" in
       op)   echo "MCP_OP_VAULT=${MCP_OP_VAULT:-Private}" ;;
       sops) echo "MCP_SOPS_FILE=${MCP_SOPS_FILE:-$CFG_DIR/secrets.sops.yaml}" ;;
     esac
   } > "$CFG"
-  info "wrote $CFG (default backend: $default) — edit vault/file as needed"
+  info "wrote $CFG (default backend: $default). Edit vault/file as needed"
 fi
 [ -f "$CFG" ] && chmod 600 "$CFG"
 
@@ -92,7 +92,7 @@ if [ "$ACTIVE_BACKEND" = "sops" ]; then
     fi
     info "age key present: $AGE_KEY"
   elif ! command -v age-keygen >/dev/null 2>&1; then
-    warn "SOPS backend selected but 'age' isn't installed — 'brew install sops age' (see plugins/mcp-secure/BACKENDS.md), then re-run."
+    warn "SOPS backend selected but 'age' isn't installed. Run 'brew install sops age' (see plugins/mcp-secure/BACKENDS.md), then re-run."
   else
     do_gen=1
     if [ "$NONINTERACTIVE" -eq 0 ] && [ -r /dev/tty ]; then
@@ -109,18 +109,18 @@ if [ "$ACTIVE_BACKEND" = "sops" ]; then
       chmod 600 "$AGE_KEY"
       info "generated age key (chmod 600): $AGE_KEY"
       pub="$(age-keygen -y "$AGE_KEY" 2>/dev/null || true)"
-      [ -n "$pub" ] && echo "   public key — use as the recipient in .sops.yaml:"
+      [ -n "$pub" ] && echo "   public key (use as the recipient in .sops.yaml):"
       [ -n "$pub" ] && echo "     $pub"
-      warn "NEVER commit $AGE_KEY (the private key). Add it to .gitignore and back it up — lose it and your secrets are unrecoverable."
+      warn "NEVER commit $AGE_KEY (the private key). Add it to .gitignore and back it up. Lose it and your secrets are unrecoverable."
     else
-      info "skipped age-key generation — see plugins/mcp-secure/BACKENDS.md when ready."
+      info "skipped age-key generation. See plugins/mcp-secure/BACKENDS.md when ready."
     fi
   fi
 fi
 
 case ":$PATH:" in
   *":$BIN_DIR:"*) ;;
-  *) warn "$BIN_DIR is not on your PATH — add it so the resolver is reachable when MCP servers spawn." ;;
+  *) warn "$BIN_DIR is not on your PATH. Add it so the resolver is reachable when MCP servers spawn." ;;
 esac
 
 echo

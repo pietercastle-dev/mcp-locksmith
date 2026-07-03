@@ -3,7 +3,7 @@
 
 Tool surface is env-driven so tests can simulate drift WITHOUT changing the
 server's command/args (mcp-pin's identity hashes name+command+args, so only an
-env-driven change reads as the same server whose tools moved — a rug-pull):
+env-driven change reads as the same server whose tools moved, a rug-pull):
   FAKE_TOOLS  comma-separated tool names          (default "hello")
   FAKE_DESC   description prefix for every tool   (default "does")
   FAKE_DIE    if set, print it to stderr and exit 1 immediately (crash sim)

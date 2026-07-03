@@ -63,7 +63,7 @@ class PinEnv(unittest.TestCase):
 
     def test_changed_args_reads_as_unpinned_not_drift(self):
         # identity = name+command+args, so a version bump (new args) must read
-        # as "new, re-pin" — the documented semantics /mcp-secure:update relies on.
+        # as "new, re-pin", the documented semantics /mcp-secure:update relies on.
         self.write_config()
         self.pin("pin")
         spec = {"command": sys.executable, "args": [FAKE, "--v2"]}
@@ -124,7 +124,7 @@ class PinEnv(unittest.TestCase):
         # After a version bump / migration the server hashes to a NEW identity;
         # `pin --replace` must drop the stale same-name pin so no orphan is left
         # (and a later verify can't match the wrong baseline). Fixes the orphan-
-        # accumulation UX found dogfooding — the re-pin flows pass --replace.
+        # accumulation UX found dogfooding: the re-pin flows pass --replace.
         self.write_config()
         self.pin("pin")
         spec = {"command": sys.executable, "args": [FAKE, "--v2"]}

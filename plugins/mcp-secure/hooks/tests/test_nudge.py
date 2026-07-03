@@ -105,7 +105,7 @@ class Nudge(unittest.TestCase):
 
     def test_oauth_style_remote_not_counted_unpinned(self):
         # no headers/headersHelper → likely Claude Code OAuth, which mcp-pin
-        # can't baseline — stay silent rather than nag about the impossible
+        # can't baseline, stay silent rather than nag about the impossible
         e = Env(servers={"r": {"type": "http", "url": "https://x.example"}})
         self.assertIsNone(e.run())
 

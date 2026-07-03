@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""mcp-pin — pin MCP servers' tool definitions and detect drift (rug-pulls).
+"""mcp-pin: pin MCP servers' tool definitions and detect drift (rug-pulls).
 
 Speaks just enough of the MCP protocol (a minimal stdio JSON-RPC client) to ask
 each configured server for its tool list, hashes the security-relevant fields
@@ -7,12 +7,12 @@ each configured server for its tool list, hashes the security-relevant fields
 stored baseline. A change to an already-approved tool is a rug-pull signal; a
 new/unknown tool is something to review for tool-poisoning before pinning.
 
-Discovers servers wherever they live — NO repo required:
+Discovers servers wherever they live, NO repo required:
   - ./.mcp.json (when you're in a repo)
   - ~/.claude.json: user-scope mcpServers + the current dir's project entry
 
 Pins live per-user at ~/.config/mcp-secret/pins.json, keyed by server identity
-(name + command + args; name + url for remote servers) — so a version bump
+(name + command + args; name + url for remote servers), so a version bump
 reads as "new, re-pin".
 
 Usage:
@@ -24,12 +24,12 @@ Usage:
   mcp-pin prune [--yes]   drop pins with no matching server here (dry-run w/o --yes)
   mcp-pin tools -- <command> [args…]
                           plumbing: launch a command and print its MCP tool list
-                          as JSON — lets /mcp-secure:update diff a candidate
+                          as JSON, lets /mcp-secure:update diff a candidate
                           version's tools against the current one before adopting
 
 Covers stdio and streamable-HTTP servers (honoring `headers`/`headersHelper`).
 Known gap, labeled honestly: a remote server that authenticates via Claude
-Code's OAuth store can't be listed here (that token isn't ours to read) — those
+Code's OAuth store can't be listed here (that token isn't ours to read). Those
 fail with a message saying so. Legacy `type: "sse"` servers are skipped with a
 note. Exit non-zero if any server drifts from its pin or fails to verify.
 """
@@ -119,7 +119,7 @@ def list_tools_stdio(spec):
     for k, v in (spec.get("env") or {}).items():
         env[k] = expand(v)
 
-    # Capture stderr (to a temp file — no pipe-deadlock risk) so a failure can
+    # Capture stderr (to a temp file, no pipe-deadlock risk) so a failure can
     # say WHY: npx fetch errors, missing runtimes, mcp-launch resolve failures.
     errf = tempfile.TemporaryFile(mode="w+", errors="replace")
     proc = subprocess.Popen([command] + args, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
@@ -131,7 +131,7 @@ def list_tools_stdio(spec):
         try:
             errf.seek(0)
             lines = [ln.strip() for ln in errf.read().splitlines() if ln.strip()]
-            return (" — server stderr: " + " | ".join(lines[-3:])) if lines else ""
+            return (", server stderr: " + " | ".join(lines[-3:])) if lines else ""
         except Exception:
             return ""
 
@@ -204,7 +204,7 @@ def list_tools_stdio(spec):
 
 
 def http_headers(spec):
-    """Static `headers` merged with `headersHelper` output (helper wins) — the
+    """Static `headers` merged with `headersHelper` output (helper wins). The
     same contract Claude Code uses, so a config that connects in a session
     authenticates identically here. The helper is a shell command that prints
     a JSON object of headers."""
@@ -256,10 +256,10 @@ def list_tools_http(spec):
         except urllib.error.HTTPError as e:
             if e.code in (401, 403) and not auth:
                 raise RuntimeError(
-                    f"HTTP {e.code} — the server wants auth and this config has no "
+                    f"HTTP {e.code}: the server wants auth and this config has no "
                     "headers/headersHelper. If it authenticates via Claude Code's "
                     "OAuth store, that token isn't reachable from here (a "
-                    "documented gap — see README).")
+                    "documented gap, see README).")
             raise RuntimeError(f"HTTP {e.code} {e.reason}")
         except Exception as e:
             raise RuntimeError(f"cannot reach {url}: {getattr(e, 'reason', e)}")
@@ -282,7 +282,7 @@ def list_tools_http(spec):
                         data_lines.append(line[5:].lstrip())
                         continue
                     if line:
-                        continue  # other SSE fields (event:, id:) — irrelevant here
+                        continue  # other SSE fields (event:, id:), irrelevant here
                     if data_lines:
                         try:
                             msg = json.loads("\n".join(data_lines))
@@ -364,7 +364,7 @@ def is_legacy_sse(spec):
 
 def spec_target(spec):
     """Identity inputs for either transport: (command, args) for stdio,
-    (url, []) for remote — the url sits in the command slot so the hash
+    (url, []) for remote. The url sits in the command slot so the hash
     scheme (and every keep-in-sync copy of identity()) stays unchanged."""
     if is_remote(spec):
         return expand(spec.get("url", "")), []
@@ -388,7 +388,7 @@ def cmd_pin(names):
     fails = 0
     for n, s in sel.items():
         if is_legacy_sse(s):
-            warn(f"{n}: legacy SSE transport — can't pin (migrate to streamable http)"); continue
+            warn(f"{n}: legacy SSE transport. Can't pin (migrate to streamable http)"); continue
         try:
             hashes = current_hashes(s)
         except Exception as e:
@@ -404,7 +404,7 @@ def cmd_pin(names):
         # Superseded pins: same name, DIFFERENT identity. The server as configured
         # here now hashes to new_id, so any other same-name pin is a stale baseline
         # from before its command/args/url changed (version bump, migration, a
-        # reverted migration). Left in place these accumulate as orphans — and
+        # reverted migration). Left in place these accumulate as orphans, and
         # worse, a later `verify` can match the WRONG baseline and cry drift.
         # --replace drops them (the re-pin FLOWS pass it, since supersession is the
         # whole point there); a bare pin only FLAGS them, because a same-name pin
@@ -421,7 +421,7 @@ def cmd_pin(names):
                 ok(f"{n}: superseded prior pin from {when} ({ntools} tool(s))")
             else:
                 info(f"{n}: a prior pin from {when} ({ntools} tool(s)) is now "
-                     f"superseded — pass --replace to remove it, or `mcp-pin unpin {n}`")
+                     f"superseded. Pass --replace to remove it, or `mcp-pin unpin {n}`")
     save_pins(pins)
     return 1 if fails else 0
 
@@ -436,26 +436,26 @@ def cmd_verify(names):
     dirty = False
     for n, s in sel.items():
         if is_legacy_sse(s):
-            info(f"{n}: legacy SSE transport — can't verify (migrate to streamable http)"); continue
+            info(f"{n}: legacy SSE transport. Can't verify (migrate to streamable http)"); continue
         cmd, args = spec_target(s)
         pin = pins.get(identity(n, cmd, args))
         try:
             cur = current_hashes(s)
         except Exception as e:
-            bad(f"{n}: cannot verify — {e}"); fails += 1; continue
+            bad(f"{n}: cannot verify: {e}"); fails += 1; continue
         if not pin:
-            warn(f"{n}: not pinned — review its tools, then `mcp-pin pin {n}`"); unpinned += 1; continue
+            warn(f"{n}: not pinned. Review its tools, then `mcp-pin pin {n}`"); unpinned += 1; continue
         old = pin.get("tools") or {}
         added = sorted(t for t in cur if t not in old)
         removed = sorted(t for t in old if t not in cur)
         changed = sorted(t for t in cur if t in old and cur[t] != old[t])
         if not (added or removed or changed):
             ok(f"{n}: unchanged ({len(cur)} tools)")
-            # freshness marker — the nudge warns when this goes stale
+            # freshness marker, the nudge warns when this goes stale
             pin["lastVerified"] = time.strftime("%Y-%m-%dT%H:%M:%S")
             dirty = True
         else:
-            bad(f"{n}: DRIFT — changed={changed} added={added} removed={removed}")
+            bad(f"{n}: DRIFT: changed={changed} added={added} removed={removed}")
             bad(f"      a tool changed since you approved it (possible rug-pull). "
                 f"Re-vet, then `mcp-pin pin {n}`.")
             fails += 1
@@ -465,7 +465,7 @@ def cmd_verify(names):
     if fails:
         print(f"  {R}{fails} server(s) drifted/failed{X}")
     elif unpinned:
-        print(f"  {Y}{unpinned} unpinned server(s) — review and pin{X}")
+        print(f"  {Y}{unpinned} unpinned server(s). Review and pin{X}")
     else:
         print(f"  {G}all pinned servers unchanged{X}")
     return 1 if fails else 0
@@ -475,7 +475,7 @@ def cmd_list(_names):
     pins = load_pins()
     head("pinned servers")
     if not pins:
-        info("none yet — run `mcp-pin pin`"); return 0
+        info("none yet, run `mcp-pin pin`"); return 0
     for v in sorted(pins.values(), key=lambda x: x.get("name", "")):
         ok(f"{v.get('name')}: {len(v.get('tools') or {})} tool(s)  "
            f"(pinned {v.get('pinnedAt', '?')}, last verified {v.get('lastVerified', 'never')})")
@@ -496,18 +496,18 @@ def cmd_unpin(names):
     for name in names:
         matches = [k for k in pins if pins[k].get("name") == name]
         matched += len(matches)
-        # A name can map to several identities — typically a stale pin left
+        # A name can map to several identities, typically a stale pin left
         # behind after a server's command/args changed (e.g. a migration),
         # plus the fresh re-pin. Deleting the pin for the server AS CONFIGURED
         # HERE because it shares a name with a stale one would silently undo
-        # that re-pin — so with multiple matches, keep the live identity.
+        # that re-pin, so with multiple matches, keep the live identity.
         # A single match is removed unconditionally: that's the deliberate
         # "unpin this server" case, live or not.
         keep = [k for k in matches if k in live] if len(matches) > 1 else []
         for k in matches:
             if k in keep:
                 info(f"{name}: kept the pin for the server as configured here "
-                     f"(pinned {pins[k].get('pinnedAt', '?')}) — run "
+                     f"(pinned {pins[k].get('pinnedAt', '?')}). Run "
                      f"`mcp-pin unpin {name}` again to remove it too")
                 continue
             ok(f"{name}: pin removed (pinned {pins[k].get('pinnedAt', '?')})")
@@ -530,12 +530,12 @@ def cmd_prune(names):
     head("prune")
     if not orphans:
         info("no orphaned pins for this context"); return 0
-    warn("discovery is relative to the CURRENT dir (./.mcp.json) + ~/.claude.json — "
-         "a pin below may belong to ANOTHER repo you're simply not in right now.")
+    warn("discovery is relative to the CURRENT dir (./.mcp.json) + ~/.claude.json. "
+         "A pin below may belong to ANOTHER repo you're simply not in right now.")
     for v in sorted(orphans.values(), key=lambda x: x.get("name", "")):
         print(f"    {v.get('name')}  (pinned {v.get('pinnedAt', '?')})")
     if not apply:
-        info(f"{len(orphans)} orphaned pin(s) — re-run `mcp-pin prune --yes` to remove all, "
+        info(f"{len(orphans)} orphaned pin(s). Re-run `mcp-pin prune --yes` to remove all, "
              "or `mcp-pin unpin <name>` for specific ones")
         return 0
     for k in orphans:

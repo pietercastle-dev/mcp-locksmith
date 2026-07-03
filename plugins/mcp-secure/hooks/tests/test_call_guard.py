@@ -121,7 +121,7 @@ class Tripwire(unittest.TestCase):
 
     def test_oauth_style_remote_and_unknown_servers_are_silent(self):
         # a remote server with NO headers/headersHelper likely authenticates via
-        # Claude Code's OAuth store — mcp-pin may not be able to pin it, so no ask
+        # Claude Code's OAuth store, mcp-pin may not be able to pin it, so no ask
         e = Env(servers={"remote": {"type": "http", "url": "https://x.example"}},
                 pins={"deadbeef00000000": {"name": "other"}})
         self.assertEqual(call("mcp__remote__do", {"q": "x"}, e), "allow")

@@ -4,13 +4,13 @@
     "name": "pietercastle-dev"
   },
   "metadata": {
-    "description": "Give Claude new tools just by asking — API keys stay in your vault (never in config or chat), new tools get safety-checked, and it's all local: no cloud, no Docker. Plus a template for team-wide always-on tools."
+    "description": "Give Claude new tools just by asking. API keys stay in your vault (never in config or chat), new tools get safety-checked, and it all runs locally with no cloud and no Docker. Plus a template for team-wide always-on tools."
   },
   "plugins": [
     {
       "name": "mcp-secure",
       "source": "./plugins/mcp-secure",
-      "description": "Add tools to Claude in plain language — keys stay in your vault (never in config or chat), new tools are safety-checked, and you're warned if one changes later. Local, no cloud. Start with /mcp-secure:setup."
+      "description": "Add tools to Claude in plain language. Keys stay in your vault (never in config or chat), new tools are safety-checked, and you're warned if one changes later. Runs locally, no cloud. Start with /mcp-secure:setup."
     },
     {
       "name": "mcp-globals",

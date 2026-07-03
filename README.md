@@ -1,8 +1,8 @@
 # mcp-locksmith
 
-**The easiest way to give Claude new tools — safe by default.**
+**The easiest way to give Claude new tools, safe by default.**
 
-Claude Code can use external **tools** (called "MCP servers") — a web browser,
+Claude Code can use external **tools** (called "MCP servers"): a web browser,
 Slack, your notes, a database. Adding one normally means editing JSON by hand and
 pasting an API key into a config file. mcp-locksmith lets you just ask: say
 *"add a Slack tool"* and Claude sets it up. Your key goes into the vault you
@@ -26,30 +26,30 @@ handles the rest. You only need a vault if a tool requires a key.
 
 ## Requirements
 
-**Claude Code** on **macOS or Linux** (Windows via WSL — the helpers are
+**Claude Code** on **macOS or Linux** (Windows via WSL; the helpers are
 bash/python scripts). Then, only as you need them:
 
 - **To run most tools:** Node.js (`npx`) and/or Python (`uvx`). `python3` also
-  runs the secret-leak guard hook — without it, that guard silently won't run.
-- **Only if a tool needs a key:** one vault CLI — **1Password** (`op`),
+  runs the secret-leak guard hook, so without it that guard silently won't run.
+- **Only if a tool needs a key:** one vault CLI, either **1Password** (`op`),
   **Bitwarden** (`bw`), or **SOPS** (`sops`). Setup helps you pick; secure
   step-by-step for each is in **[`BACKENDS.md`](plugins/mcp-secure/BACKENDS.md)**.
 
 ## What you can do
 
-You usually **don't need to type these** — just ask in plain language ("add a
+You usually **don't need to type these**. Just ask in plain language ("add a
 Slack tool", "remove the GitHub server", "are my tool keys safe?") and the
 matching flow runs automatically.
 
 | Command | What it does |
 |---------|--------------|
-| `/mcp-secure:setup` | **Start here** — guided first-time setup |
-| `/mcp-secure:add` | Add a tool to this project — ready-made, or safety-checked first |
-| `/mcp-secure:update` | Update tools — preview what a new version changes before taking it |
+| `/mcp-secure:setup` | **Start here.** Guided first-time setup |
+| `/mcp-secure:add` | Add a tool to this project, ready-made or safety-checked first |
+| `/mcp-secure:update` | Update tools; preview what a new version changes before taking it |
 | `/mcp-secure:fix` | Diagnose and fix a tool that isn't working |
 | `/mcp-secure:remove` | Remove a tool and revoke its key |
 | `/mcp-secure:audit` | Review tools you **already** had and bring them into the safe setup |
-| `/mcp-secure:check` | One health check — secrets resolve, no tool changed since approval |
+| `/mcp-secure:check` | One health check: secrets resolve, no tool changed since approval |
 | `/mcp-secure:verify` | Focused drift-only check (also rolled into `check`) |
 | `/mcp-secure:always-on` | Set up an always-on tool (e.g. Slack everywhere) |
 
@@ -60,17 +60,18 @@ matching flow runs automatically.
 
 You store a key once in a vault you already trust; config holds only a
 *reference*, resolved at the moment the tool starts. The key never lands on disk
-and never reaches the chat. Around that, layered defenses — a miss in one is
-caught by another:
+and never reaches the chat. Around that sit several checks, so a gap in one is
+covered by another:
 
-1. **Add-time vetting** — provenance, pinned version, least privilege, a
+1. **Add-time vetting.** Provenance, pinned version, least privilege, and a
    tool-poisoning check. See **[`VETTING.md`](plugins/mcp-secure/VETTING.md)**.
-2. **Config guard** — a hook blocks literal secrets from being written into
+2. **Config guard.** A hook blocks literal secrets from being written into
    config and flags global-scope changes. A best-effort safety net, not a sandbox.
-3. **Call guard** — a hook watches outbound tool calls and checks with you if a
-   credential-shaped value is about to leave through one (the classic poisoned-tool
-   move), or on first use of a tool that was never pinned. Asks, never blocks.
-4. **Drift detection** — `/mcp-secure:check` warns if an approved tool changes
+3. **Call guard.** A hook watches outbound tool calls and checks with you if a
+   credential-shaped value is about to leave through one (the classic
+   poisoned-tool move), or on first use of a tool that was never pinned. It asks,
+   never blocks.
+4. **Drift detection.** `/mcp-secure:check` warns if an approved tool changes
    its capabilities later (a "rug-pull").
 5. *Optional:* [Socket Firewall](https://github.com/SocketDev/sfw-free) (`sfw`)
    for install-time supply chain, and deeper scanners on demand (see `VETTING.md`).
@@ -78,13 +79,13 @@ caught by another:
 ## For teams
 
 An optional `org.json` points everyone at your internal MCP docs and recommended
-tools, surfaced in the flows — never enforced. Keep your vetted sets as private
+tools, surfaced in the flows but never enforced. Keep your vetted sets as private
 bundles. See **[`ORG.md`](plugins/mcp-secure/ORG.md)**.
 
 ## For technical users
 
-The full design — the `mcp-secret` resolver, `mcp-launch` injection, scoping
-model, tool pinning, and the complete security model — lives in
+The full design (the `mcp-secret` resolver, `mcp-launch` injection, scoping
+model, tool pinning, and the complete security model) lives in
 **[`plugins/mcp-secure/README.md`](plugins/mcp-secure/README.md)**.
 
 ## What's in this repo
@@ -106,4 +107,4 @@ and the detailed [PLAN.md](PLAN.md).
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE).

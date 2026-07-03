@@ -3,11 +3,11 @@ description: Set up always-on (global) MCP servers that load in every repo
 ---
 
 **How to talk to the user:** plain, friendly language (same tone as
-`/mcp-secure:setup`). Frame this as "always-on tools" — ones available in every
+`/mcp-secure:setup`). Frame this as "always-on tools", ones available in every
 project automatically (like Slack), rather than per-project. The mechanics below
 are for you; explain choices to the user simply.
 
-Help the user set up **always-on tools** — ones that load in *every* project (e.g.
+Help the user set up **always-on tools**, ones that load in *every* project (e.g.
 Slack at work). Reserve it for things genuinely useful everywhere; most tools belong
 to one project via `/mcp-secure:add`.
 
@@ -18,7 +18,7 @@ plugin.** If a set of servers should always be on in some environment, they belo
 in a dedicated plugin (see the `mcp-globals` template in the marketplace repo; copy
 it per profile like `acme-globals` / `home-globals`). To add one:
 1. Vet it against `VETTING.md` (provenance, pinned version, least privilege). A
-   global server runs everywhere — vet it at least as hard as a project one.
+   global server runs everywhere. Vet it at least as hard as a project one.
 2. Add it to that plugin's `.mcp.json` using `${CLAUDE_PLUGIN_ROOT}/bin/mcp-launch`
    with a fully-qualified secret ref (e.g. `op://Work/<item>/<field>`). Never inline a token.
 3. Publish the plugin; teammates install it on the machines where it applies.
@@ -28,7 +28,7 @@ always-on servers, skip the plugin overhead:
 1. Vet it the same way.
 2. `claude mcp add -s user <name> -- mcp-launch --secret NAME=<ref> -- <server> <args>`
    (the guard will ask you to confirm the global scope). For secrets, route through
-   `mcp-launch` exactly as above — never `-e TOKEN=<literal>`.
+   `mcp-launch` exactly as above. Never `-e TOKEN=<literal>`.
 
 Always: keep the global set small and deliberate; project scope is the default.
 Remind the user that user-scope / plugin changes load on the next session start.

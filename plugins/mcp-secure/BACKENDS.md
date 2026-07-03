@@ -1,4 +1,4 @@
-# Secret backends — secure setup
+# Secret backends: secure setup
 
 You only need a backend if a tool needs a password or API key. Pick **one** and
 follow its section, then run `/mcp-secure:check` to confirm it's wired up.
@@ -9,7 +9,7 @@ follow its section, then run `/mcp-secure:check` to confirm it's wired up.
 | **Bitwarden** | you want a free hosted vault | `bw` (+ `jq`) | `bw://item/field` |
 | **SOPS + age** | you prefer files in git, no SaaS | `sops`, `age` | `sops://file#/key/path` |
 
-**Install CLIs from the official source** — your OS package manager or the
+**Install CLIs from the official source**: your OS package manager or the
 vendor's signed installer, never a random `curl … | sh`.
 
 ---
@@ -49,7 +49,7 @@ export BW_SESSION="$(bw unlock --raw)"    # each new shell/session
 bw status                                 # should say "unlocked"
 ```
 
-`BW_SESSION` lives only in your current shell — re-run the unlock when
+`BW_SESSION` lives only in your current shell. Re-run the unlock when
 `/mcp-secure:check` reports "locked"; never commit it.
 
 Config: `MCP_SECRET_BACKEND=bw`. References: `bw://cloudflare/token`
@@ -69,7 +69,7 @@ age-keygen -o ~/.config/sops/age/keys.txt   # install.sh offers to do this
 chmod 600 ~/.config/sops/age/keys.txt
 ```
 
-> 🔐 **Never commit `keys.txt`** (the private key) — but do back it up; lose it
+> 🔐 **Never commit `keys.txt`** (the private key), but do back it up; lose it
 > and the secrets are unrecoverable. Commit only `.sops.yaml` and the encrypted
 > files.
 
@@ -105,14 +105,14 @@ References: `sops://~/secrets.sops.yaml#/cloudflare/token`, or the short form
 ## Verify
 
 `/mcp-secure:check` (or `mcp-doctor`) confirms the CLI is installed, you're
-authenticated, and every reference in your config resolves — without ever
+authenticated, and every reference in your config resolves, without ever
 printing a secret value.
 
 ## Principles
 
-- **One vault, referenced — never inlined.** Config holds references; values are
+- **One vault, referenced, never inlined.** Config holds references; values are
   fetched only at spawn.
 - **Least privilege** for every API token.
 - **Official installs only.**
-- **Protect the root of trust** — your vault login or age private key gates
+- **Protect the root of trust**: your vault login or age private key gates
   everything else.

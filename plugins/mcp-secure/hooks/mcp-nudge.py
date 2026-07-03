@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""SessionStart hook for mcp-secure — fast, and at most one nudge per repo.
+"""SessionStart hook for mcp-secure: fast, and at most one nudge per repo.
 
 Two cases, otherwise silent:
   - The git repo has NO MCP servers yet → suggest /mcp-secure:setup or :add.
@@ -7,7 +7,7 @@ Two cases, otherwise silent:
     config, or some aren't pinned) → suggest /mcp-secure:audit, ONCE per project
     (a marker file stops it from nagging every session).
 
-Only reads local files + regex — no subprocess — so it stays fast at session start.
+Only reads local files + regex (no subprocess), so it stays fast at session start.
 """
 import glob
 import hashlib
@@ -85,7 +85,7 @@ if not servers:
     emit("This git repo has no MCP servers (tools) configured yet. Available bundles: "
          + ", ".join(bundles) + ". Briefly let the user know. If they're new to this, "
          "suggest /mcp-secure:setup for a guided walkthrough. Otherwise /mcp-secure:add "
-         "adds a tool to this repo — a ready-made bundle, or a brand-new one it "
+         "adds a tool to this repo: a ready-made bundle, or a brand-new one it "
          "safety-checks first.")
 
 # --- servers EXIST: nudge about adoption/staleness, at most once per
@@ -99,7 +99,7 @@ except Exception:
     seen = {}
 last = seen.get(cwd)
 if last is True:
-    last = 0  # legacy boolean marker — eligible for the time-based policy
+    last = 0  # legacy boolean marker. Eligible for the time-based policy
 if isinstance(last, (int, float)) and now - last < MAX_AGE_DAYS * 86400:
     sys.exit(0)
 
@@ -148,8 +148,8 @@ for n, s in servers.items():
     if not isinstance(s, dict):
         continue
     if s.get("type") == "sse":
-        continue  # legacy SSE transport — mcp-pin can't baseline it
-    # Remote (streamable-HTTP) servers hash as (url, []) — mirrors mcp-pin spec_target.
+        continue  # legacy SSE transport: mcp-pin can't baseline it
+    # Remote (streamable-HTTP) servers hash as (url, []). Mirrors mcp-pin spec_target.
     remote = s.get("type") == "http" or bool(s.get("url"))
     if remote:
         cmd, args = expand(s.get("url", "")), []
@@ -158,7 +158,7 @@ for n, s in servers.items():
     pin = pins.get(identity(n, cmd, args))
     if not pin:
         # A remote server with no headers/headersHelper likely authenticates via
-        # Claude Code's OAuth store, which mcp-pin can't reach — don't count it.
+        # Claude Code's OAuth store, which mcp-pin can't reach. Don't count it.
         if not remote or s.get("headers") or s.get("headersHelper"):
             unpinned.append(n)
     else:
@@ -167,7 +167,7 @@ for n, s in servers.items():
             stale.append(n)
 
 if not (inline or unpinned or stale):
-    sys.exit(0)  # adopted and fresh — stay silent
+    sys.exit(0)  # adopted and fresh. Stay silent
 
 # Record so we don't nudge this project again for MAX_AGE_DAYS.
 try:
@@ -185,8 +185,8 @@ if unpinned:
     parts.append(("1 isn't" if n == 1 else f"{n} aren't") + " pinned/adopted yet")
 if stale:
     parts.append(f"{len(stale)} haven't been drift-checked in over {int(MAX_AGE_DAYS)} days")
-suggest = "/mcp-secure:audit — it moves any plaintext secret into their vault and pins " \
+suggest = "/mcp-secure:audit. It moves any plaintext secret into their vault and pins " \
           "the tools" if (inline or unpinned) else \
-          "/mcp-secure:check — it re-verifies the pinned tools haven't changed"
-emit("This project has MCP tools needing attention — " + "; ".join(parts) + ". "
+          "/mcp-secure:check. It re-verifies the pinned tools haven't changed"
+emit("This project has MCP tools needing attention: " + "; ".join(parts) + ". "
      "Briefly let the user know and offer to run " + suggest + ". Offer once; don't push.")

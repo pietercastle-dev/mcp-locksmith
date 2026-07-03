@@ -7,7 +7,7 @@ Three rules (see README.md and the CLAUDE.md convention snippet):
 2. No plaintext secrets in MCP config. A secret-shaped value is blocked whether it
    reaches config via `claude mcp add -e/--env`, `claude mcp add-json '<payload>'`,
    a shell redirect/heredoc/tee into a `*.mcp.json` / `~/.claude.json`, OR a
-   Write/Edit/MultiEdit into those files — including secrets tucked in an `args`
+   Write/Edit/MultiEdit into those files, including secrets tucked in an `args`
    array, not just `env` key/values. DENY, with a pointer to the mcp-launch pattern.
    This is the #1 documented MCP footgun.
 3. Hand-editing ~/.claude.json's top-level mcpServers is the documented escape
@@ -15,7 +15,7 @@ Three rules (see README.md and the CLAUDE.md convention snippet):
 
 This is defense-in-depth, not a sandbox: it fails OPEN (malformed input or an
 unrecognized command shape is allowed) so it can't brick the user. Treat it as a
-safety net that catches the common footguns, not a guarantee — the real rule is
+safety net that catches the common footguns, not a guarantee. The real rule is
 "never write a literal secret into config in the first place" (see VETTING.md).
 
 Registered for both the Bash matcher and the Write|Edit|MultiEdit matcher; it
@@ -57,9 +57,9 @@ SECRET_VAL = re.compile(
     r"AIza[0-9A-Za-z_\-]{30,}|"                              # Google API key
     r"-----BEGIN[ A-Z]*PRIVATE KEY-----|"                   # PEM private key
     r"[a-z][a-z0-9+.\-]*://[^/?#@\s:]+:[^/?#@\s]+@)")        # creds in a URL/DSN
-# NOTE: deliberately NOT matching bare high-entropy hex — git SHAs and content
+# NOTE: deliberately NOT matching bare high-entropy hex. Git SHAs and content
 # hashes legitimately appear in configs and would be false positives.
-# Forms that are SAFE: env expansion, a bare $VAR, or an mcp-secret reference —
+# Forms that are SAFE: env expansion, a bare $VAR, or an mcp-secret reference,
 # optionally behind an auth scheme, so `Bearer ${TOKEN}` reads as safe too.
 SAFE_VAL = re.compile(
     r"^\s*(?:(?:Bearer|Basic|Token)\s+)?(\$\{[^}]+\}|\$[A-Za-z_]\w*|op://|sops://|bw://)",
@@ -68,7 +68,7 @@ SAFE_VAL = re.compile(
 CONFIG_BASENAMES = (".mcp.json", ".claude.json")
 
 WRAPPER_HINT = (
-    "Don't put a literal secret in MCP config — it persists to disk and can reach "
+    "Don't put a literal secret in MCP config. It persists to disk and can reach "
     "Claude's context. Use the harness pattern: keep the secret in your backend and "
     "reference it via mcp-launch, e.g. command=mcp-launch, "
     "args=[\"--secret\",\"NAME=op://Vault/item/field\",\"--\",<server>...]. The token is "
@@ -90,8 +90,8 @@ def looks_secret(key, val):
 def find_secret(blob):
     """Return a short label for the offending secret, or None.
 
-    Catches a credential two ways: (a) a value-shaped token anywhere in the text —
-    covers `args` arrays, add-json payloads, and shell redirects where there's no
+    Catches a credential two ways: (a) a value-shaped token anywhere in the text.
+    Covers `args` arrays, add-json payloads, and shell redirects where there's no
     key to anchor on; (b) a `"key": "value"` pair whose key implies a secret.
     """
     if not isinstance(blob, str) or not blob:
@@ -143,14 +143,14 @@ if tool == "Bash":
     # `import` ingests an external config file/stream into MCP config too.
     is_import = bool(re.search(r"\bclaude\b.+?\bmcp\b.+?\bimport\b", cmd, re.S))
     if is_add or is_import or writes_mcp_config(cmd):
-        # Explicit `-e/--env NAME=literal` — catches custom-named secrets that
+        # Explicit `-e/--env NAME=literal`. Catches custom-named secrets that
         # aren't a recognizable token shape.
         for m in re.finditer(
                 r"(?:-e|--env)[=\s]+([A-Za-z_]\w*)=('[^']*'|\"[^\"]*\"|[^\s]+)", cmd):
             k, v = m.group(1), m.group(2).strip("'\"")
             if looks_secret(k, v):
                 out("deny", "Blocked: literal secret in `claude mcp add -e`. " + WRAPPER_HINT)
-        # `--header/-H "Name: value"` on http/sse adds — an opaque bearer/API-key
+        # `--header/-H "Name: value"` on http/sse adds. An opaque bearer/API-key
         # value has no recognizable token shape, so anchor on the header name.
         for m in re.finditer(
                 r"(?:-H|--header)[=\s]+('[^']*'|\"[^\"]*\"|[^\s]+)", cmd):
@@ -166,11 +166,11 @@ if tool == "Bash":
         if what:
             out("deny", f"Blocked: {what} looks like a literal secret headed into MCP "
                         f"config. " + WRAPPER_HINT)
-    # Global/user scope is allowed but deliberate — it loads in EVERY repo, so
+    # Global/user scope is allowed but deliberate. It loads in EVERY repo, so
     # confirm. Reserve it for the curated "everywhere" set (e.g. Slack at work).
     if is_add and re.search(r"(?:-s|--scope)[=\s]+user\b", cmd):
         out("ask",
-            "This adds a GLOBAL (user-scope) MCP server — it loads in every repo. "
+            "This adds a GLOBAL (user-scope) MCP server. It loads in every repo. "
             "That's intended only for the curated always-on set (e.g. Slack). For a "
             "server a single project needs, use -s project instead. Confirm if this "
             "really belongs everywhere; for a reproducible always-on set, use a "
@@ -201,7 +201,7 @@ if tool in ("Write", "Edit", "MultiEdit"):
 
     # Prefer a structural scan: if the written blob is valid JSON (a full Write),
     # walk it so escaped quotes and args-array secrets can't hide. Fragments (most
-    # Edits) aren't valid JSON on their own — fall back to the text scan.
+    # Edits) aren't valid JSON on their own. Fall back to the text scan.
     try:
         what = scan_json(json.loads(blob))
     except Exception:
@@ -212,7 +212,7 @@ if tool in ("Write", "Edit", "MultiEdit"):
     if is_global and '"mcpServers"' in blob:
         out("ask",
             "This edits ~/.claude.json's global MCP scope, which loads in every repo. "
-            "That's the documented escape hatch — confirm you intend a global server "
+            "That's the documented escape hatch. Confirm you intend a global server "
             "rather than a project-scoped one.")
     sys.exit(0)
 

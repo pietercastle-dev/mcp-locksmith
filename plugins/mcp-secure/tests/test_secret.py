@@ -77,7 +77,7 @@ class SecretEnv(unittest.TestCase):
         self.assertEqual(r.stdout, f'sops-val:["cloudflare"]["token"]:{f}')
 
     def test_sops_path_traversal_rejected(self):
-        # regression: shipped security fix (v0.1.1) — an untrusted ref must not
+        # regression: shipped security fix (v0.1.1), an untrusted ref must not
         # read outside the intended location
         r = self.run_secret("sops://~/../../etc/passwd#/k")
         self.assertEqual(r.returncode, 1)
@@ -91,7 +91,7 @@ class SecretEnv(unittest.TestCase):
         self.assertIn("needs a key fragment", r.stderr)
 
     def test_config_is_parsed_not_executed(self):
-        # regression: shipped security fix (v0.1.1) — config must never be
+        # regression: shipped security fix (v0.1.1), config must never be
         # source'd; a command substitution in a value stays a literal string
         marker = os.path.join(self.root, "pwned")
         r = self.run_secret("item/field",

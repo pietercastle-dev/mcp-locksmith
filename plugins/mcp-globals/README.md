@@ -1,7 +1,7 @@
 # mcp-globals (template)
 
 The **global tier**: a profile of always-on MCP servers, loaded in every repo when
-this plugin is enabled. Use it for servers you genuinely want everywhere — Slack at
+this plugin is enabled. Use it for servers you genuinely want everywhere: Slack at
 work, or a personal set at home. This is a template; copy it per profile, fill in
 the real servers, and install it where it applies.
 
