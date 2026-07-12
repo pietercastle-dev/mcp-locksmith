@@ -49,9 +49,46 @@ CLAUDE.md warns that the `plugin.json` version is the install cache key (a
 change shipped without a bump is invisible to plugin-install users); ROADMAP
 adds the argument-level tool scoping deferral.
 
-What remains to v1.0 is specified below: exemplars (Gate 2 item 1 + the folded
-rename), release integrity (Gate 2 item 4), then Gate 3 (clean-machine
-dogfood, v1.0.0, marketplace submission).
+**Specs A and B below are IMPLEMENTED (2026-07-11, all suites green,
+`claude plugin validate --strict` passes):** three real exemplars ship
+(frontend / github / notion) with `tests/test_bundles.py` enforcing they stay
+exemplary; the reframing landed across the flows (the add flow's save-for-
+reuse now writes to *private* bundles, closing a catalog-creep path); tag
+signing is configured with the dedicated `pcastle_signing` key
+(`SHA256:OqdEXK9a1DCgE6ZBkvs3JoW+r934EEI70Bt5z6WYVi0`, sign-and-verify
+smoke-tested), `allowed_signers` + the SECURITY.md verify section are
+published, and CI gained a strict-validate job (plus a fix: the JSON step
+still pointed at the deleted mcp-globals path). The automatable slice of
+Gate 3 dogfood ran and paid for itself: `install.sh` died with exit 2 on the
+supported no-vault path (pipefail + grep on a missing config) — fixed, with
+`tests/test_install.py` proven red on the old code.
+
+### Next: the path to v1.0.0, in order
+
+1. **Push `main`** (operator). CI must go green, including the new validate
+   job — its first run in a real runner is itself a test.
+2. **Register the release key on GitHub** (operator): add
+   `~/.ssh/pcastle_signing.pub` as a **signing key** (not an auth key) on the
+   `pietercastle-dev` account, so tags get the Verified badge the SECURITY.md
+   cross-check points at.
+3. **Interactive dogfood** (operator + Claude, the rest of Gate 3 item 1):
+   fresh plugin install via the marketplace flow, `/mcp-secure:setup`, then
+   add the `github` and `notion` exemplars with real vault-backed tokens and
+   confirm both resolve at spawn and pin clean (Spec A's live acceptance).
+   Walk the feature-complete definition below as a literal checklist; hunt
+   unwarranted asks. Metric: fresh machine to working browser tool < 5 min.
+4. **Stage v1.0.0**: bump `plugins/mcp-secure/.claude-plugin/plugin.json`
+   (the cache key), date the CHANGELOG `[Unreleased]` section + link, commit,
+   **signed** tag. Verify `git verify-tag v1.0.0` passes with only in-repo
+   material before publishing.
+5. **Publish** (operator confirms each): push the tag, create the GitHub
+   release, then submit through the individual-author plugin form on
+   platform.claude.com (`claude plugin validate --strict` must pass first —
+   it does today). Approved plugins land SHA-pinned in the community
+   marketplace; the catalog syncs nightly, so check the listing after a day.
+6. **Post-release**: update the README install snippet if the community-
+   marketplace name differs, and start the ROADMAP conversation for post-1.0
+   (argument-level scoping is already queued there).
 
 ### Spec A: exemplars (Gate 2 item 1 + the bundles-to-exemplars reframing)
 

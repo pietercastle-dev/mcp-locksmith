@@ -77,13 +77,15 @@ first clone this is trust-on-first-use. What signing buys you is
 **continuity**: once you've audited a release, every later tag must be signed
 by the same key, so a rewritten tag or a release cut by someone who merely
 gained push access fails verification. Cross-checks that don't depend on this
-repo: the key fingerprint below, and GitHub's copy of the account's keys at
-`https://github.com/pietercastle-dev.keys`.
+repo: the key fingerprint below, and the **Verified** badge GitHub renders on
+the tag (the release key is registered as a signing key on the
+`pietercastle-dev` account, and GitHub checks signatures against that copy,
+not against this repo's files).
 
 Release signing key (ed25519):
 
 ```
-SHA256:WQIw4F/IJqMT7GLmiUsbZ3+7pF26JhkHYzf75DvZSXo
+SHA256:OqdEXK9a1DCgE6ZBkvs3JoW+r934EEI70Bt5z6WYVi0
 ```
 
 To confirm the plugin you *installed* matches the tag you *audited*, diff the
