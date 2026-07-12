@@ -17,11 +17,11 @@ guard hooks against the common leak vectors.
 | `bin/mcp-launch` | Generic launcher: injects resolved secrets into a server at spawn (env or CLI flag), then execs it. |
 | `bin/mcp-doctor` | Health-checks the chain: backend auth + every config reference resolves. `--launch` also spawns each stdio server and reports (with its stderr) whether it starts and speaks MCP. |
 | `bin/mcp-pin` | Pins each server's tool definitions and detects drift (rug-pull defense). |
-| `bin/mcp-bundles` | Lists bundle dirs (shipped + private) for `/mcp-secure:add`. |
+| `bin/mcp-bundles` | Lists ready-made locations (shipped exemplars + private bundles) for `/mcp-secure:add`. |
 | `commands/` | `setup`, `add`, `update`, `fix`, `remove`, `audit`, `always-on`, `check`, `verify` (see the top README's table). |
 | `skills/` | `add-tool` / `update-tool` / `fix-tool` / `remove-tool` / `audit-tools`, which route plain-language requests to the commands. |
 | `hooks/` | Config guard (blocks literal secrets, confirms global scope), call guard (asks on credential-shaped values in outbound tool calls + first use of an unpinned server), session nudge. |
-| `bundles/` | Vetted, ready-to-add server sets. Private bundles: `~/.config/mcp-secret/bundles/`. |
+| `bundles/` | Shipped exemplars: a few vetted, exact-pinned demonstrations of the pattern (not a catalog). Private bundles: `~/.config/mcp-secret/bundles/`. |
 | `VETTING.md` / `BACKENDS.md` / `ORG.md` | Vetting checklist / backend setup / optional team config. |
 
 ## Install

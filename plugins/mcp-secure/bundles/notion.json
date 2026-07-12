@@ -1,0 +1,13 @@
+{
+  "_comment": "Exemplar: secret-backed local (stdio) tool. mcp-launch resolves NOTION_TOKEN from your vault at spawn and injects it as env, so config never holds it (and env beats argv: argv is visible in ps). Vetted 2026-07-11: @notionhq/notion-mcp-server 2.4.1, official Notion org on npm, MIT, github.com/makenotion/notion-mcp-server. Create an internal integration with 'Read content' only and connect it to just the pages you need. Notion prefers its hosted OAuth tool and may sunset this npm server; this exemplar's job is the mcp-launch pattern, which fits any token-only stdio server. Change 'notion/token' to your vault ref. Bare 'mcp-launch' works because a repo .mcp.json has no ${CLAUDE_PLUGIN_ROOT}; install.sh puts it on PATH.",
+  "mcpServers": {
+    "notion": {
+      "type": "stdio",
+      "command": "mcp-launch",
+      "args": [
+        "--secret", "NOTION_TOKEN=notion/token",
+        "--", "npx", "-y", "@notionhq/notion-mcp-server@2.4.1"
+      ]
+    }
+  }
+}

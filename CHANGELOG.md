@@ -7,6 +7,24 @@ plugin's `.claude-plugin/plugin.json`.
 ## [Unreleased]
 
 ### Added
+- **Real exemplars replace the placeholder.** The shipped set is now three
+  vetted, exact-pinned demonstrations of the pattern: `frontend` (no secret),
+  `github` (official GitHub remote tool over HTTP, read-only endpoint, PAT via
+  `headersHelper` + `mcp-secret` reference — the header route is what makes it
+  pinnable), and `notion` (official Notion npm server at an exact version via
+  `mcp-launch --secret`, the live spawn-time injection demo).
+  `example-secret.json` is gone. Each secret-backed exemplar records
+  provenance and its vet date in a `_comment`.
+- **Exemplar regression test** (`tests/test_bundles.py`): every shipped file
+  must parse, exact-pin anything a fetching launcher runs, contain no
+  credential-shaped literals (reuses the guard's `SECRET_VAL`/`SAFE_VAL` via
+  AST extraction), route secrets through references, and carry a vet date.
+- **Release integrity**: tags are SSH-signed from v1.0.0 on; verification
+  material ships in-repo (`.github/allowed_signers` + fingerprint in
+  SECURITY.md) with an honest "what this proves" note (TOFU + continuity), and
+  a "Verify what you installed" recipe covers `git verify-tag` and diffing the
+  installed plugin cache against the tagged tree. CI now runs
+  `claude plugin validate --strict` (npm-pinned CLI) on every push.
 - **Keep-in-sync test** (`tests/test_keep_in_sync.py`): the credential regexes
   (`SECRET_VAL`/`SECRET_KEY`/`SAFE_VAL`) and the server `identity()` hash are
   duplicated by design across five standalone scripts (mcp-guard.py,
@@ -18,6 +36,11 @@ plugin's `.claude-plugin/plugin.json`.
   mirroring the others now fails CI.
 
 ### Changed
+- **Shipped bundles are now called exemplars** in user-facing docs and flows
+  (add/setup/update, the nudge, the technical README): a handful of
+  demonstrations of the pattern, never a catalog. Your private bundles and the
+  `mcp-bundles` plumbing keep their names. The add flow's "save for reuse"
+  step now writes to your private bundles instead of growing the shipped set.
 - **`mcp-globals` folded into `mcp-secure`.** The always-on profile template was
   a second, `defaultEnabled: false` marketplace plugin that nobody installed as
   is (you copy it per profile), and the `always-on` flow pointed at it "in the

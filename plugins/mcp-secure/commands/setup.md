@@ -53,8 +53,8 @@ Then go through these steps, pausing for the user between each:
 
 4. **Add their first tool. Show the value.** Offer a ready-made, no-secret tool so
    they see it work immediately: run `/mcp-secure:add` and suggest the
-   `frontend` bundle (a browser/devtools tool). Walk them through approving it on
-   restart.
+   `frontend` exemplar (a browser/devtools tool). Walk them through approving it
+   on restart.
 
 5. **Show the safety net.** Mention two things briefly: `/mcp-secure:check`
    checks everything's healthy (run it now to show green), and a guard

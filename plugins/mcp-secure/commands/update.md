@@ -56,9 +56,9 @@ at add time; this flow is how that version safely moves.
    separately, heeding its warning that pins are per-user and discovery is
    per-directory.
 
-5. **Bundles.** If the server matches a bundle (shipped, or private in
-   `~/.config/mcp-secret/bundles/`, `mcp-bundles --all`), offer to update the
-   bundle's version too, so the next add gets the current version.
+5. **Exemplars & bundles.** If the server matches a shipped exemplar or a
+   private bundle (`~/.config/mcp-secret/bundles/`, `mcp-bundles --all`), offer
+   to update that file's version too, so the next add gets the current version.
 
 6. Remind the user that config changes load on the next session start.
 

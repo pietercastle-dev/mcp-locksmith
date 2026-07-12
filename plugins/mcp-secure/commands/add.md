@@ -10,16 +10,17 @@ their technical level. The numbered steps below are for you, not the user.
 Add a tool to **this project's** config (`.mcp.json`). This one command handles both
 cases. Figure out which you're in, don't make the user choose:
 
-- **Ready-made tool**: a vetted bundle that ships with the plugin (already safe to
-  add). Fast path.
+- **Ready-made tool**: a shipped exemplar — a vetted, exact-pinned demonstration
+  of the pattern (already safe to add) — or one of the user's private bundles.
+  Fast path.
 - **Brand-new tool**: a package, server, or URL the plugin doesn't ship. Needs a
   quick safety check before it goes in.
 
 **First, decide which path you're on:**
 
-1. List all available bundles (both the plugin's shipped ones **and** the user's
-   private ones) by running `mcp-bundles --all` (prints every bundle file path, one
-   per line). The bundle name is the filename without `.json`. (Private bundles live in
+1. List everything ready-made (the plugin's shipped exemplars **and** the user's
+   private bundles) by running `mcp-bundles --all` (prints every file path, one
+   per line). The name is the filename without `.json`. (Private bundles live in
    `~/.config/mcp-secret/bundles/`, via `mcp-bundles --user`; that's where a user/team
    keeps their own vetted sets without committing them to the public plugin.)
 
@@ -29,17 +30,17 @@ cases. Figure out which you're in, don't make the user choose:
    conventions. (Org config is a pointer only; don't enforce anything. See `ORG.md`.)
 2. Look at `$ARGUMENTS`:
    - **Empty**, so this is almost always someone wanting a ready-made tool. Go to
-     **Ready-made** and let them pick. (If they then describe a tool that isn't a
-     bundle, switch to **Brand-new**.)
-   - **Names a shipped bundle** (matches a bundle filename, e.g. `frontend`), go to
-     **Ready-made**.
+     **Ready-made** and let them pick. (If they then describe a tool that isn't
+     ready-made, switch to **Brand-new**.)
+   - **Names a shipped exemplar or private bundle** (matches a filename, e.g.
+     `frontend`), go to **Ready-made**.
    - **Anything else** (a package like `@acme/foo`, a URL, a tool by name), go to
      **Brand-new**. When unsure, tell the user plainly which path you're taking and
      why, and let them redirect.
 
 ---
 
-### Ready-made (vetted bundle into this repo)
+### Ready-made (exemplar or private bundle into this repo)
 
 1. Read each bundle. Ignore any `_comment` key, it's documentation.
 2. **Validate** each bundle before offering it: valid JSON shaped `{ "mcpServers": { ... } }`. If a bundle contains a literal secret (an `env`/`args` value that isn't a `${VAR}`, an `op://`/`sops://`/`bw://` ref, or an `mcp-launch --secret/--arg` ref), warn. Bundles must resolve secrets via `mcp-launch`, never inline them.
@@ -104,7 +105,7 @@ Work through the checklist, doing real research, don't assume:
    ```
    Merge with any existing settings (never clobber), only with explicit approval, and when in doubt about a tool leave it prompting. This uses Claude Code's native permission system. Don't invent another layer.
 
-If the server is broadly reusable, offer to also save it as a bundle in the plugin's `bundles/` dir (references only, never literal secrets). Then it becomes a ready-made tool for next time. If it's a team always-on server, point them at `/mcp-secure:always-on`.
+If the server is broadly reusable, offer to also save it as a private bundle in `~/.config/mcp-secret/bundles/` (references only, never literal secrets). Then it becomes a ready-made tool for next time. (The plugin's own shipped set stays a handful of exemplars; it isn't a catalog to grow.) If it's a team always-on server, point them at `/mcp-secure:always-on`.
 
 ---
 

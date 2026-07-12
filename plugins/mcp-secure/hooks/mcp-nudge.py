@@ -82,10 +82,11 @@ if not servers:
                       for d in dirs for p in glob.glob(os.path.join(d, "*.json"))})
     if not bundles:
         sys.exit(0)
-    emit("This git repo has no MCP servers (tools) configured yet. Available bundles: "
-         + ", ".join(bundles) + ". Briefly let the user know. If they're new to this, "
+    emit("This git repo has no MCP servers (tools) configured yet. Ready-made "
+         "options (shipped exemplars + your private bundles): " + ", ".join(bundles)
+         + ". Briefly let the user know. If they're new to this, "
          "suggest /mcp-secure:setup for a guided walkthrough. Otherwise /mcp-secure:add "
-         "adds a tool to this repo: a ready-made bundle, or a brand-new one it "
+         "adds a tool to this repo: a ready-made one, or a brand-new one it "
          "safety-checks first.")
 
 # --- servers EXIST: nudge about adoption/staleness, at most once per

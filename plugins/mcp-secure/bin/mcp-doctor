@@ -68,7 +68,7 @@ if os.path.exists(org_path):
         if org.get("docsUrl"):
             tip(f"internal MCP docs: {org['docsUrl']}")
         if org.get("recommended"):
-            tip(f"recommended bundles: {', '.join(org['recommended'])}")
+            tip(f"recommended by your org: {', '.join(org['recommended'])}")
         gw = (org.get("gateway") or {}).get("url")
         if gw:
             tip(f"org gateway (info only, routing not enforced): {gw}")

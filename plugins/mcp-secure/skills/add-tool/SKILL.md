@@ -8,8 +8,8 @@ run the mcp-secure *add* flow so it's done safely.
 
 Authoritative steps: read and follow `${CLAUDE_PLUGIN_ROOT}/commands/add.md` in this
 plugin (if that path doesn't resolve, find `commands/add.md` under the mcp-secure
-plugin). It auto-detects whether the request is a ready-made bundle or a brand-new
-server and vets new ones per `VETTING.md`.
+plugin). It auto-detects whether the request is ready-made (a shipped exemplar or
+private bundle) or a brand-new server, and vets new ones per `VETTING.md`.
 
 Non-negotiable safety rules (apply even if you can't read the file):
 - **Never put a literal secret in config.** Keep any API key/token in the user's vault

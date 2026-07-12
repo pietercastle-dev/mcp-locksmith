@@ -1,0 +1,10 @@
+{
+  "_comment": "Exemplar: secret-backed remote (HTTP) tool. The key comes from your vault via mcp-secret inside headersHelper, so config never holds it. Vetted 2026-07-11: official GitHub remote MCP (github/github-mcp-server, MIT); the /readonly path narrows the surface to read-only tools. Use a fine-grained PAT scoped to selected repos (Metadata, Contents, Issues, Pull requests: Read). GitHub also supports OAuth in Claude Code (no static secret); the header route shown here is what makes the server pinnable by mcp-pin (OAuth-store servers can't be baselined). Change 'github/token' to your vault ref.",
+  "mcpServers": {
+    "github": {
+      "type": "http",
+      "url": "https://api.githubcopilot.com/mcp/readonly",
+      "headersHelper": "printf '{\"Authorization\":\"Bearer %s\"}\\n' \"$(mcp-secret github/token)\""
+    }
+  }
+}

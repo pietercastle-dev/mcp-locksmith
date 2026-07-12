@@ -57,8 +57,8 @@ your agent's tool surface.)
    this. It diffs the new version's tools before adopting). See the OWASP MCP
    Top 10.
 
-8. **Record it.** Add the vetted config to a bundle (references only) so the
-   team gets it without re-deriving. Note the version and vet date.
+8. **Record it.** Add the vetted config to a private bundle (references only)
+   so the team gets it without re-deriving. Note the version and vet date.
 
 ## Defense in depth (beyond add-time vetting)
 

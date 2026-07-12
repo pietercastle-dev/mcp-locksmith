@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
-# Prints MCP bundle locations for /mcp-secure:add. Self-locating (resolves symlinks)
-# so it works from the plugin cache dir, a ~/.local/bin symlink, or ${CLAUDE_PLUGIN_ROOT}/bin.
+# Prints ready-made locations for /mcp-secure:add: the plugin's shipped exemplars
+# (a few vetted demonstrations of the pattern, not a catalog) and your private
+# bundles. Self-locating (resolves symlinks) so it works from the plugin cache dir,
+# a ~/.local/bin symlink, or ${CLAUDE_PLUGIN_ROOT}/bin.
 #
-#   mcp-bundles          -> the plugin's shipped bundles dir (default; backward compatible)
+#   mcp-bundles          -> the shipped exemplars dir (default; backward compatible)
 #   mcp-bundles --user   -> your private bundles dir (~/.config/mcp-secret/bundles)
-#   mcp-bundles --all    -> every *.json bundle path from shipped + private, one per line
+#   mcp-bundles --all    -> every *.json path from shipped + private, one per line
 #
 # Private bundles let you keep your own/team vetted server sets without committing them
 # to the public plugin. Override the location with $MCP_USER_BUNDLES.
@@ -26,7 +28,7 @@ case "${1:-}" in
     done
     ;;
   "")
-    [ -n "$shipped" ] || { echo "mcp-bundles: bundles dir not found near $here" >&2; exit 1; }
+    [ -n "$shipped" ] || { echo "mcp-bundles: shipped exemplars dir (../bundles) not found near $here" >&2; exit 1; }
     printf '%s\n' "$shipped"
     ;;
   *)

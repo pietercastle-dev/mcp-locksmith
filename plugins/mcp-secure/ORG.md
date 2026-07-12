@@ -25,6 +25,6 @@ dotfiles, MDM, or an internal plugin).
 |-------|--------|---------|
 | `org` | ✅ surfaced | Display name, shown in `/mcp-secure:check`. |
 | `docsUrl` | ✅ surfaced | Your internal page, shown in `check`, the nudge, `add`, `setup`. |
-| `recommended` | ✅ surfaced | Bundle names offered first in `add`. Pair with private bundles (`~/.config/mcp-secret/bundles/`) so the sets are actually present. |
+| `recommended` | ✅ surfaced | Ready-made names (exemplars or private bundles) offered first in `add`. Pair with private bundles (`~/.config/mcp-secret/bundles/`) so the sets are actually present. |
 | `gateway.*` | ℹ️ info only | Shown as information; routing not built yet (see [ROADMAP.md](../../ROADMAP.md)). |
 | `policy.*` | 🔒 reserved | Accepted, not enforced. Org policy will be advisory, like the guard. |
