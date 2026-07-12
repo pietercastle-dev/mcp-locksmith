@@ -43,7 +43,9 @@ CFG="$CFG_DIR/config"
 if [ -e "$CFG" ]; then
   info "mcp-secret config kept (exists): $CFG"
   # Sanity-check a kept config so a previously-bogus backend gets flagged.
-  kept_backend="$(grep -E '^[[:space:]]*MCP_SECRET_BACKEND[[:space:]]*=' "$CFG" 2>/dev/null | tail -1 | cut -d= -f2- | tr -d '[:space:]')"
+  # `|| true`: under pipefail a no-match grep would kill the script here,
+  # exactly on the misconfigured-file case this check exists to warn about.
+  kept_backend="$(grep -E '^[[:space:]]*MCP_SECRET_BACKEND[[:space:]]*=' "$CFG" 2>/dev/null | tail -1 | cut -d= -f2- | tr -d '[:space:]' || true)"
   case "$kept_backend" in
     op|sops|bw) ;;
     "") warn "no MCP_SECRET_BACKEND in $CFG. Short refs won't resolve. Edit it, or 'rm $CFG' and re-run." ;;
@@ -82,7 +84,10 @@ fi
 
 # 2b) SOPS path: make sure an age private key exists (the root of trust).
 # Read the backend by PARSING the config (grep), never by sourcing it.
-ACTIVE_BACKEND="$(grep -E '^[[:space:]]*MCP_SECRET_BACKEND[[:space:]]*=' "$CFG" 2>/dev/null | tail -1 | cut -d= -f2- | tr -d '[:space:]')"
+# `|| true`: with no vault CLI installed there is no config yet; under
+# pipefail the failing grep aborted the whole install with exit 2 (found in
+# the fresh-machine dogfood). No config just means no active backend.
+ACTIVE_BACKEND="$(grep -E '^[[:space:]]*MCP_SECRET_BACKEND[[:space:]]*=' "$CFG" 2>/dev/null | tail -1 | cut -d= -f2- | tr -d '[:space:]' || true)"
 if [ "$ACTIVE_BACKEND" = "sops" ]; then
   AGE_KEY="${SOPS_AGE_KEY_FILE:-$HOME/.config/sops/age/keys.txt}"
   if [ -n "${SOPS_AGE_KEY:-}" ] || [ -f "$AGE_KEY" ]; then

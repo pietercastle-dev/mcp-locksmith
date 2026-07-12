@@ -52,6 +52,14 @@ plugin's `.claude-plugin/plugin.json`.
   was always your own renamed copy, never the shipped template).
 
 ### Fixed
+- **`install.sh` aborted with exit 2 on a machine with no vault CLI** (found
+  in the v1.0 fresh-machine dogfood): under `pipefail`, the backend-parsing
+  `grep` failed on the not-yet-existing config and killed the script after
+  the symlink step, even though no-vault is a supported state ("you only need
+  a vault if a tool requires a key"). A config missing its
+  `MCP_SECRET_BACKEND` line would likewise have died on the very check meant
+  to warn about it. Both parses now tolerate absence; regression tests in
+  `tests/test_install.py` cover the no-vault and backend-less-config paths.
 - **`mcp-pin` couldn't verify remote servers behind an edge WAF** (the
   cloudflare 403): `mcp.cloudflare.com` returns HTTP 403 to the default
   `Python-urllib/x.y` User-Agent before the request reaches the MCP server, so a
