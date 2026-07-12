@@ -23,6 +23,18 @@ staleness treadmill with implied liability. The plugin ships a few *exemplar*
 bundles that demonstrate the mcp-launch reference pattern; discovery of
 everything else goes through the official registry in the `add` flow.
 
+## Argument-level tool scoping: deferred (post-1.0)
+
+Pins and native permissions gate *which tool* may be called, not *what it
+targets*: there is no way to allow a send-message tool only into one channel,
+or page edits only under one document, because permission globs stop at the
+tool name. `mcp-pin` already records each server's tool surface at approval
+time, so optional per-target allowlists derived from pins (enforced by the
+existing call guard, ask-only as ever) are a natural extension. Deferred
+because target-ID fields are vendor-specific: shipping this well means a
+per-server mapping treadmill, the same shape as the cut bundle catalog.
+Revisit post-1.0 if real usage demands it.
+
 ## Org gateway routing & policy enforcement: deferred
 
 The org-config **pointer layer** shipped in v0.3.0 (`org.json`: docs link +

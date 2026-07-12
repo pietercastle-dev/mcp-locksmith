@@ -37,6 +37,15 @@ It is **defense-in-depth, not a sandbox.** It does **not**:
 - **Catch every secret.** The guard is **fail-open** (an error, or missing
   `python3`, allows the action) and matches common credential shapes, not every
   conceivable one. It also can't un-expose a secret pasted directly into chat.
+- **Inspect what a tool returns.** The call guard sees outbound *arguments*
+  only; Claude Code has no hook on tool *output*, so a poisoned result that
+  steers the model (prompt injection) can't be caught here. Add-time vetting
+  and drift detection reduce the odds of running such a tool; nothing local
+  inspects its replies.
+- **Survive a bypass of Claude Code itself.** The hooks run in-process with
+  Claude Code and share its trust boundary. They defend against mistakes and
+  poisoned tools inside a functioning session, not against an attacker or
+  process operating outside it.
 - **Protect a compromised machine.** It assumes your account, vault login, and
   age private key aren't already in an attacker's hands.
 - **Replace your vault's security.** 1Password / Bitwarden / SOPS+age are the

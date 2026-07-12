@@ -16,7 +16,7 @@ requests. Ship before the gap closes.
 [CHANGELOG.md](CHANGELOG.md). Completed milestone detail (v0.4-v0.6) was
 removed from this file 2026-07-02. See CHANGELOG and git history.
 
-## Status (2026-07-03, session 2) & next session
+## Status (2026-07-11) & the v1.0 spec
 
 **v0.4.0 SHIPPED (2026-07-03).** Tag and GitHub release are published:
 https://github.com/pietercastle-dev/mcp-locksmith/releases/tag/v0.4.0. Gate 1
@@ -38,46 +38,108 @@ Gate 1 checklist, all green (evidence of record):
 5. **Nudge**: fires at most once, says something true.
 6. **HTTP pinning**: homeassistant + portainer verified over streamable HTTP.
 
-Done this session (2026-07-03, session 2):
+Done 2026-07-03 (session 2): keep-in-sync CI test (Gate 2 item 2, caught and
+fixed a real `SECRET_KEY` drift) and the mcp-globals fold into mcp-secure.
+Done 2026-07-03/04: the cloudflare 403 (edge WAF rejected the default
+`Python-urllib` User-Agent; `mcp-pin` now sends a named UA, WAF-simulating
+fixture test added) and the README "How it compares" table. Done 2026-07-11:
+docs hardening — SECURITY.md non-goals now state that tool *output* is not
+hookable and that hooks share Claude Code's in-process trust boundary;
+CLAUDE.md warns that the `plugin.json` version is the install cache key (a
+change shipped without a bump is invisible to plugin-install users); ROADMAP
+adds the argument-level tool scoping deferral.
 
-- **Keep-in-sync CI test** (Gate 2 item 2, done): `tests/test_keep_in_sync.py`
-  AST-extracts the duplicated credential regexes (`SECRET_VAL`/`SECRET_KEY`/
-  `SAFE_VAL`) and the `identity()` hash from the five scripts, execs each in
-  isolation (they exit at import), and asserts the shared pieces are identical
-  where duplicated and behave the same against one secret/safe corpus. Proven to
-  catch drift (reintroduced the fixed drift and watched it fail). Runs under the
-  existing CI glob, no workflow change.
-- **Fixed a real `SECRET_KEY` drift** the test surfaced: the write guard matched
-  `AUTHORIZATION`/`COOKIE` while the config scan matched `AUTH`/`BEARER`.
-  Reconciled both to the union (`AUTH` subsumes `AUTHORIZATION`; `BEARER` and
-  `COOKIE` kept), so a credential-shaped key name is caught the same on both
-  paths.
-- **Folded `mcp-globals` into `mcp-secure`** (the one pre-1.0 structural change,
-  done before release on purpose). It was a second, never-installed
-  `defaultEnabled: false` template plugin, and `always-on` pointed at it "in the
-  marketplace repo", which plugin-install users never have on disk. Now a bundled
-  scaffold at `plugins/mcp-secure/templates/globals-profile/`, stamped out by
-  `/mcp-secure:always-on`. Marketplace lists one plugin; all refs updated; old
-  dir deleted.
+What remains to v1.0 is specified below: exemplars (Gate 2 item 1 + the folded
+rename), release integrity (Gate 2 item 4), then Gate 3 (clean-machine
+dogfood, v1.0.0, marketplace submission).
 
-Next session, in order (Gate 2 remaining toward v1.0):
+### Spec A: exemplars (Gate 2 item 1 + the bundles-to-exemplars reframing)
 
-1. **Chase the cloudflare 403** (carried-over thread): `mcp-pin` can't list tools
-   at `mcp.cloudflare.com` with the headersHelper token, yet sessions connect
-   (likely OAuth-store auth plus a stale/underscoped helper token). Time-box it:
-   fix the token or drop the helper and document the no-pin gap.
-2. **GitHub exemplar bundle** (Gate 2 item 1): replace the `example-secret`
-   placeholder with ONE real, exact-pinned, secret-backed bundle so the
-   `mcp-launch` reference pattern has a live demonstration. Keep `frontend.json`;
-   3-4 bundles total, framed as exemplars, never a catalog.
-3. **README repositioning** (Gate 2 item 3): ease-first hero, positioned against
-   the incumbents' costs (no cloud, no containers, no gateway); document that the
-   nudge appears in Claude's first reply.
-4. **Release integrity** (Gate 2 item 4): signed/verified tags plus a "verify
-   what you installed" section.
+**Goal:** the shipped bundles demonstrate every secret pattern with real,
+exact-pinned servers, and user-facing docs frame them as *exemplars of the
+pattern* — never a catalog.
 
-Then Gate 3: full clean-machine dogfood, tag v1.0.0, submit to the community
-marketplace.
+Ship exactly three files in `plugins/mcp-secure/bundles/`:
+
+1. **`frontend.json`** (exists, keep): playwright + chrome-devtools, exact-
+   pinned, no secrets. The no-secret exemplar.
+2. **`github.json`** (new): the official GitHub remote MCP
+   (`https://api.githubcopilot.com/mcp`), PAT supplied via `headersHelper`
+   calling `mcp-secret` with a vault reference. Demonstrates the secret-
+   reference pattern for HTTP servers (and exercises HTTP pinning, shipped
+   v0.4.0).
+3. **`notion.json`** (new): Notion's official stdio server from npm at an
+   exact version, launched via `mcp-launch --secret <ENV>=<ref>`. The live
+   `mcp-launch` demonstration the `example-secret` placeholder stood in for.
+   Verify the current package name, exact version, and expected env var at
+   build time; vet per VETTING.md.
+
+Then **delete `example-secret.json`**. Why two secret-backed exemplars when
+the plan said one: GitHub's official server is remote-HTTP-only outside
+Docker, so a GitHub exemplar cannot demonstrate `mcp-launch` (spawn-time env
+injection into a local process). One exemplar per secret pattern is the
+minimum that leaves no pattern undemonstrated; three files total stays within
+the 3-4 budget. Each new exemplar records provenance and its vet date in a
+`_comment`.
+
+**Reframing (user-facing prose only).** The *shipped set* is called
+"exemplars"; the JSON file format, the `mcp-bundles` command, the `bundles/`
+paths, `MCP_USER_BUNDLES`, and "your private bundles" keep their names. Known
+touch points: `commands/add.md`, `commands/setup.md`, `commands/update.md`,
+`skills/add-tool/SKILL.md`, the `mcp-nudge.py` message, the `mcp-doctor` tip
+string, the plugin README table, the top-level README, `ORG.md`, `VETTING.md`.
+The framing sentence to land everywhere it fits: exemplars demonstrate the
+pattern; discovery of everything else goes through the registry in `add`.
+
+**New test `tests/test_bundles.py`:** every shipped exemplar parses as JSON
+with an `mcpServers` object; every npm/PyPI-launched server pins an exact
+version (no `latest`, no bare package name); no config value looks like a
+literal credential (reuse the test corpus style from `test_keep_in_sync.py`);
+any server that needs a secret routes it through `mcp-launch --secret` or a
+`headersHelper` reference. This is what keeps "exemplar" from regressing to
+"placeholder".
+
+**Acceptance:** the add flow offers all three exemplars by name; adding
+`github` and `notion` on a real machine resolves secrets from the vault and
+pins clean; no shipped doc calls the set a catalog; suite green.
+
+### Spec B: release integrity (Gate 2 item 4)
+
+Context (verified 2026-07-11 against the plugin-marketplace docs): the plugin
+ecosystem has no signing convention; distribution integrity is git tags plus
+the community catalog pinning approved plugins to a commit SHA. So the story
+is tags users can verify, plus mechanical validation:
+
+1. **Sign tags from v1.0.0 on** (SSH signing key). Publish verification
+   material in-repo: an `allowed_signers` file plus the key fingerprint in
+   SECURITY.md.
+2. **"Verify what you installed"** section in SECURITY.md, linked from the
+   README trust section: the `git verify-tag` recipe against `allowed_signers`,
+   and how to diff the installed plugin cache
+   (`~/.claude/plugins/cache/...`) against the tagged tree.
+3. **`claude plugin validate --strict`** as a CI step and pre-submission
+   checklist item. Fill out `plugin.json` metadata completely (author,
+   repository, homepage, license, keywords) — the submission pipeline wants
+   it, and it is what users see in `/plugin`.
+
+**Acceptance:** CI green including validate; `git verify-tag v1.0.0` passes
+using only material published in the repo; SECURITY.md explains verification
+in plain language.
+
+### Spec C: Gate 3 — dogfood, release, submit
+
+1. **Clean-machine dogfood (M):** fresh HOME and fresh clone (true clean
+   machine preferred), walking the definition of feature-complete below as a
+   literal checklist. Metric: fresh machine to working browser tool in under
+   5 minutes. Every command in the README must work exactly as written.
+2. **Stage v1.0.0** per the CLAUDE.md release pattern — bump `plugin.json`
+   (the cache key), date the CHANGELOG, **signed** tag, GitHub release.
+3. **Submit to the community marketplace**: run `claude plugin validate
+   --strict`, then submit the repo through the individual-author plugin
+   submission form on platform.claude.com. Approved plugins land pinned to a
+   commit SHA in `anthropics/claude-plugins-community`; the public catalog
+   syncs nightly, so check the listing after a day. Submission and tag push
+   are outward-facing: operator confirms before each.
 
 Optional dogfood fodder: migrate the portainer-stdio wrapper (`--arg`, still no
 real-world user) and slim the headers scripts to `mcp-secret` one-liners.
@@ -154,11 +216,17 @@ published the GitHub release. Next release is v0.5.0 or v1.0.0 after Gate 2.
    behave the same against a shared corpus. It surfaced a real `SECRET_KEY` drift
    (guard `AUTHORIZATION`/`COOKIE` vs doctor `AUTH`/`BEARER`), now reconciled to
    the union. The "keep in sync" comments are enforceable.
-3. **README repositioning (S).** Lead with "the easiest way to give Claude
-   tools, safe by default"; convenience is the hook, security the
-   trust-builder. Position explicitly against the incumbents' costs (no cloud,
-   no containers, no gateway). Rename bundles to exemplars. Document that the
-   SessionStart nudge appears in Claude's first reply.
+3. **README repositioning (S). ✅ mostly DONE (2026-07-04).** Hero already led
+   with "the easiest way to give Claude tools, safe by default." Sharpened the
+   incumbent contrast: the hero names the *shapes* (cloud scanner / container
+   runtime / proxy gateway) without naming rivals (durable), and a new "How it
+   compares" table names them for SEO and comparison shoppers (mcp-scan needs a
+   Snyk account + token and shares tool metadata; ToolHive needs Docker/Podman;
+   gateways need a deployed service), each with an honest "strongest at" so the
+   section builds credibility instead of overclaiming. Documented that the drift
+   reminder appears in Claude's first reply, not a popup. **Remaining:** the
+   bundles-to-exemplars rename, deliberately folded into item 1 (it spans the add
+   flow + technical README, so it belongs with the exemplar-bundle work).
 4. **Release integrity (S).** Signed/verified tags; a "verify what you
    installed" section; CHANGELOG per milestone.
 

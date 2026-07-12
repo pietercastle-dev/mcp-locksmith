@@ -64,3 +64,9 @@ Pattern: "Stage vX.Y.Z release" commit: bump
 `[Unreleased]` section (+ link at bottom), tag `vX.Y.Z`, GitHub release.
 Users are told to pin tags, so never rewrite a published tag. Commit as
 **pietercastle-dev**.
+
+Claude Code caches installed plugins keyed by the `plugin.json` version, so
+a behavior change without a version bump is **silently invisible** to
+plugin-install users. This repo runs the plugin live via symlinks, which
+masks the problem locally. Every release that touches `hooks/`, `commands/`,
+`skills/`, or `bin/` must bump the version (any release should).

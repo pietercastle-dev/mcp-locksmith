@@ -10,8 +10,11 @@ already use, never into config and never shown to Claude. New tools get a quick
 safety check, and built-in guards catch leaks and warn you if a tool changes
 after you approved it.
 
-No cloud account, no Docker, no gateway. It's a few local scripts and hooks that
-run inside Claude Code, and nothing phones home.
+Other ways to lock down MCP tools ask you to run something extra: a cloud
+scanner your config uploads to, a Docker runtime wrapped around every server, or
+a proxy gateway to route through. mcp-locksmith is just local scripts and hooks
+that run inside Claude Code. No cloud account, no containers, no gateway, and
+nothing phones home.
 
 ## Install (about 2 minutes)
 
@@ -72,9 +75,29 @@ covered by another:
    poisoned-tool move), or on first use of a tool that was never pinned. It asks,
    never blocks.
 4. **Drift detection.** `/mcp-secure:check` warns if an approved tool changes
-   its capabilities later (a "rug-pull").
+   its capabilities later (a "rug-pull"). When a check is due, the reminder
+   appears inside Claude's first reply of the session, not as a separate popup.
 5. *Optional:* [Socket Firewall](https://github.com/SocketDev/sfw-free) (`sfw`)
    for install-time supply chain, and deeper scanners on demand (see `VETTING.md`).
+
+## How it compares
+
+Other MCP security tools are good at what they do, and most add a piece of
+infrastructure to do it. mcp-locksmith deliberately adds none: it runs as local
+scripts and hooks inside Claude Code. The honest trade is that it's
+defense-in-depth and secret hygiene, not a scanner or a sandbox, so it pairs
+well with the tools below rather than replacing them.
+
+| Tool | Approach | What it needs | Strongest at |
+|------|----------|---------------|--------------|
+| **[mcp-scan](https://github.com/invariantlabs-ai/mcp-scan)** (Invariant Labs / Snyk) | Scans tool descriptions for poisoning and injection; can proxy traffic at runtime | A Snyk account and API token; shares tool names and descriptions with the cloud | Deep tool-poisoning and prompt-injection analysis |
+| **[ToolHive](https://github.com/stacklok/toolhive)** (Stacklok) | Runs each server in an isolated container with scoped permissions and network isolation | Docker or Podman (Kubernetes for teams) | Real sandbox isolation and network egress control |
+| **MCP gateways** ([IBM ContextForge](https://github.com/IBM/mcp-context-forge), Docker MCP Gateway, Lasso) | A proxy in front of every server for aggregation, guardrails, and central policy | A deployed, self-hosted gateway service | Org-wide policy enforcement and aggregation |
+| **mcp-locksmith** | Vault-reference secrets, local tool pinning, runtime leak guards, plain-language flows | Nothing beyond Claude Code (a vault CLI only if a tool needs a key) | Zero-setup adoption; keys never in config or context |
+
+They aren't mutually exclusive: run mcp-locksmith for everyday tool adoption and
+secret hygiene, and reach for a scanner or a sandbox when you need deep analysis
+or hard isolation.
 
 ## For teams
 
