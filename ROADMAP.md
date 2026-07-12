@@ -35,6 +35,21 @@ because target-ID fields are vendor-specific: shipping this well means a
 per-server mapping treadmill, the same shape as the cut bundle catalog.
 Revisit post-1.0 if real usage demands it.
 
+## Install-guard hook (Socket Firewall wrapper): deferred (post-1.0)
+
+An operator-authored PreToolUse hook that checks package-install commands
+against Socket Firewall policy proved useful in personal use, and the guard
+pattern was copied organically into other projects. Not folded into v1:
+an always-on Bash hook with a network-backed check breaks the "no felt
+latency, local reads only" hook principles and guards a surface (all package
+installs, everywhere) that belongs to the scanner, not this plugin. The
+in-scope version to revisit: an **opt-in, off by default** hook (or a
+documented snippet the setup flow offers when `sfw` is detected) scoped via
+an `if` rule to the install/fetch commands the plugin's own flows generate.
+Any shipped version needs the Gate-1 bar first: real-session proof of zero
+unwarranted asks and no felt latency. Until then, the existing coupling
+stands: VETTING.md recommends sfw for fetches, mcp-doctor detects it.
+
 ## Org gateway routing & policy enforcement: deferred
 
 The org-config **pointer layer** shipped in v0.3.0 (`org.json`: docs link +
