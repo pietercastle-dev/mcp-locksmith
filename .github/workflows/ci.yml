@@ -1,21 +1,34 @@
 name: ci
 
+# COST: `push:` used to fire on EVERY branch, so each feature commit ran the full
+# matrix — including macos-latest, billed at 10x Linux — and the PR then ran it AGAIN.
+# Now push is main-only (feature work is gated by its PR), macOS runs only where it
+# earns its 10x (PRs + manual dispatch), and concurrency cancels superseded runs.
 on:
   push:
+    branches: [main]
   pull_request:
+  workflow_dispatch:
 
 # Least privilege: this CI only reads the repo. Pin the token to read-only so a
 # compromised step can't push, open PRs, or alter the repo.
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   check:
-    # Both OSes on purpose: two shipped bugs (SOPS key location, bash-3.2 empty
-    # array under set -u) were macOS-only and invisible to Linux-only CI.
+    # Both OSes on purpose: two shipped bugs (SOPS key location, bash-3.2 empty array
+    # under set -u) were macOS-only and invisible to Linux-only CI. But macOS is 10x the
+    # cost, so run it only where it gates a merge (PR) or on demand — Linux always runs
+    # (incl. push to main). A direct push to main gets Linux; use a PR or dispatch for macOS.
     strategy:
+      fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: ${{ (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch') && fromJSON('["ubuntu-latest", "macos-latest"]') || fromJSON('["ubuntu-latest"]') }}
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
