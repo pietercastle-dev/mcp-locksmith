@@ -54,6 +54,11 @@ def head(m): print(f"\n{B}=={X} {m}")
 
 PINS = os.path.expanduser(os.environ.get("MCP_PINS_FILE", "~/.config/mcp-secret/pins.json"))
 TIMEOUT = float(os.environ.get("MCP_PIN_TIMEOUT", "20"))
+# Some edge WAFs (Cloudflare's, notably mcp.cloudflare.com) 403 the default
+# `Python-urllib/x.y` User-Agent before the request reaches the MCP server, so a
+# config that connects fine in a real session fails to verify here. Send a named
+# UA; a `headers`/`headersHelper` that sets its own User-Agent still wins.
+USER_AGENT = "mcp-pin/0.1 (mcp-secure)"
 
 
 def load_pins():
@@ -247,6 +252,7 @@ def list_tools_http(spec):
         hdrs["Content-Type"] = "application/json"
         hdrs["Accept"] = "application/json, text/event-stream"
         hdrs.setdefault("MCP-Protocol-Version", "2025-06-18")
+        hdrs.setdefault("User-Agent", USER_AGENT)
         if session_id:
             hdrs["Mcp-Session-Id"] = session_id
         req = urllib.request.Request(url, data=json.dumps(payload).encode(),
@@ -340,7 +346,8 @@ def list_tools_http(spec):
         if session_id:  # politely end the session (optional per spec)
             try:
                 req = urllib.request.Request(
-                    url, headers=dict(auth, **{"Mcp-Session-Id": session_id}), method="DELETE")
+                    url, headers=dict({"User-Agent": USER_AGENT}, **auth,
+                                      **{"Mcp-Session-Id": session_id}), method="DELETE")
                 urllib.request.urlopen(req, timeout=3).close()
             except Exception:
                 pass

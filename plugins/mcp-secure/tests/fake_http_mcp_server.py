@@ -10,6 +10,8 @@ be simulated WITHOUT changing the url (same identity, moved tools):
                   across restarts so the url stays stable while tools change
   FAKE_HTTP_AUTH  if set, require this exact Authorization header, else 401
   FAKE_SSE        if set, wrap each response as a text/event-stream data: event
+  FAKE_REJECT_UA  if set, 403 any request whose User-Agent contains this substring
+                  (simulates an edge WAF blocking the default Python-urllib UA)
 
 Also exercises the session plumbing: initialize issues an Mcp-Session-Id and
 every later POST without it gets 400; a client that drops the header can't
@@ -49,10 +51,21 @@ class Handler(BaseHTTPRequestHandler):
         else:
             self._send(200, body, "application/json", session)
 
+    def _waf_blocked(self):
+        bad_ua = os.environ.get("FAKE_REJECT_UA")
+        if bad_ua and bad_ua in (self.headers.get("User-Agent") or ""):
+            self._send(403, b'{"error":"forbidden"}')
+            return True
+        return False
+
     def do_DELETE(self):
+        if self._waf_blocked():
+            return
         self._send(200)
 
     def do_POST(self):
+        if self._waf_blocked():
+            return
         want = os.environ.get("FAKE_HTTP_AUTH")
         if want and self.headers.get("Authorization") != want:
             self._send(401, b'{"error":"unauthorized"}')

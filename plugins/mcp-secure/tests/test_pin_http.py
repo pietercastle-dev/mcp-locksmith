@@ -126,6 +126,24 @@ class HttpPinEnv(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stdout)
         self.assertIn("unchanged", r.stdout)
 
+    def test_named_user_agent_gets_past_edge_waf(self):
+        # Cloudflare's edge (mcp.cloudflare.com) 403s the default Python-urllib UA
+        # before the request reaches the MCP server. mcp-pin sends a named UA so a
+        # config that connects in a real session also verifies here. Sanity-check
+        # the fixture really blocks the default UA, then prove mcp-pin isn't blocked.
+        port = self.serve(env={"FAKE_TOOLS": "alpha", "FAKE_REJECT_UA": "Python-urllib"})
+        url = f"http://127.0.0.1:{port}/mcp"
+        import urllib.error
+        import urllib.request
+        req = urllib.request.Request(url, data=b"{}", method="POST")
+        with self.assertRaises(urllib.error.HTTPError) as cm:
+            urllib.request.urlopen(req, timeout=5)
+        self.assertEqual(cm.exception.code, 403)  # fixture blocks the default UA
+        self.write_config(url)
+        r = self.pin("pin")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("pinned 1 tool(s)", r.stdout)
+
     def test_legacy_sse_transport_is_skipped(self):
         self.write_config("http://127.0.0.1:9/mcp", type_="sse")
         r = self.pin("pin")

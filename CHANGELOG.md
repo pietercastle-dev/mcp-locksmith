@@ -29,6 +29,16 @@ plugin's `.claude-plugin/plugin.json`.
   was always your own renamed copy, never the shipped template).
 
 ### Fixed
+- **`mcp-pin` couldn't verify remote servers behind an edge WAF** (the
+  cloudflare 403): `mcp.cloudflare.com` returns HTTP 403 to the default
+  `Python-urllib/x.y` User-Agent before the request reaches the MCP server, so a
+  server that connects fine in a live session failed `mcp-pin verify` with an
+  opaque "HTTP 403 Forbidden". The auth token, `headersHelper`, and endpoint
+  were all correct; only the UA was blocked. `mcp-pin` now sends a named
+  `User-Agent` (`mcp-pin/0.1 (mcp-secure)`) on both the JSON-RPC and the DELETE
+  teardown requests; a `headers`/`headersHelper` that sets its own User-Agent
+  still wins. Covered by a WAF-simulating fixture knob (`FAKE_REJECT_UA`) and a
+  new test.
 - **`SECRET_KEY` drift between the write guard and the config scan**:
   mcp-guard.py matched `AUTHORIZATION`/`COOKIE` while mcp-doctor matched
   `AUTH`/`BEARER`, so a key named `COOKIE` was flagged on write but not by the
