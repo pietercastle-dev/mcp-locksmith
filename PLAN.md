@@ -63,6 +63,39 @@ Gate 3 dogfood ran and paid for itself: `install.sh` died with exit 2 on the
 supported no-vault path (pipefail + grep on a missing config) — fixed, with
 `tests/test_install.py` proven red on the old code.
 
+### Dogfood findings from real-session transcripts (2026-07-12)
+
+Mined the surviving session transcripts (retention was 1 day — now 14) for
+the plugin's runtime behavior in real use. Ranked:
+
+1. **FIXED — call guard was dead everywhere.** Committed 644, invoked
+   directly, failed `Permission denied` in every installed session, fail-open
+   hid it. See CHANGELOG. `test_executable.py` now locks all runtime scripts
+   to committed 100755. Lesson recorded: the Gate 1 "exfil guard silent"
+   evidence was vacuous — silence must be proven to be a *decision*, not an
+   error; the executability test plus one live-fire is the new bar.
+2. **Home-dir rename orphaned the plugin silently** (marketplace registered
+   at a dead directory path; two sessions of hand-repair). Candidate:
+   `mcp-doctor` checks that the plugin's own install is healthy —
+   marketplace path exists, bins on PATH, hooks executable. Queue for
+   pre-1.0 if cheap, else ROADMAP.
+3. **`mcp-pin verify` on a hung stdio server says only "cannot verify:
+   timeout"** — true but actionless (cost ~80 lines of manual debugging).
+   Candidate: name the phase that timed out (spawn vs initialize vs
+   tools/list) and suggest `mcp-doctor --launch`.
+4. **PATH friction**: helpers + `sops` needed manual `PATH`/`SOPS_AGE_KEY_FILE`
+   exports in-session; first doctor run misreported "sops not installed".
+   Candidate: doctor distinguishes "not installed" from "not on this
+   session's PATH".
+5. Minor: superseded-pin nag appeared 3x in one session; the `--replace`
+   path exists but the default re-pin flow doesn't pass it.
+
+Also observed working as designed: the nudge fired exactly once and said
+something true (5 unpinned servers, verified accurate); pin caught a real
+tool-surface change (102 vs a stale 14-tool baseline); audit/check/remove
+flows clean; and other sessions *copied* the guard pattern for their own
+hooks — the design is earning adoption.
+
 ### Next: the path to v1.0.0, in order
 
 1. **Push `main`** (operator). CI must go green, including the new validate

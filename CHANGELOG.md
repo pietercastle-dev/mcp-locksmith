@@ -52,6 +52,19 @@ plugin's `.claude-plugin/plugin.json`.
   was always your own renamed copy, never the shipped template).
 
 ### Fixed
+- **The runtime call guard never actually ran in installed copies.**
+  `mcp-call-guard.py` was committed non-executable (mode 644; its sibling
+  hooks are 755) while `hooks.json` invokes scripts directly, so every
+  installed session got a silent `Permission denied` non-blocking error and
+  the exfil guard + unpinned-server tripwire were dead their whole life — the
+  fail-open design hid it, and the unit tests missed it because they invoke
+  the script via `python3`. Found by mining real session transcripts
+  (2026-07-12). Mode fixed; live-fired end to end (a credential-shaped value
+  in an outbound tool call now draws the ask). New
+  `hooks/tests/test_executable.py` asserts every hooks.json-referenced script
+  and everything in `bin/` is executable on disk AND committed 100755 — the
+  index mode is what clones and plugin caches receive, so a local chmod alone
+  can't mask it again.
 - **`install.sh` aborted with exit 2 on a machine with no vault CLI** (found
   in the v1.0 fresh-machine dogfood): under `pipefail`, the backend-parsing
   `grep` failed on the not-yet-existing config and killed the script after
