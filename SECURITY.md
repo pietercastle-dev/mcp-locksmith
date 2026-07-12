@@ -63,6 +63,40 @@ track the tag), **review diffs before updating** (especially `hooks/` and
 `bin/`), and verify you cloned the real repo:
 `github.com/pietercastle-dev/mcp-locksmith`.
 
+## Verify what you installed
+
+Release tags from v1.0.0 on are SSH-signed. To check a tag was signed by this
+project's release key:
+
+```sh
+git -c gpg.ssh.allowedSignersFile=.github/allowed_signers verify-tag v1.0.0
+```
+
+Be honest about what that proves: the key list ships in the same repo, so on
+first clone this is trust-on-first-use. What signing buys you is
+**continuity**: once you've audited a release, every later tag must be signed
+by the same key, so a rewritten tag or a release cut by someone who merely
+gained push access fails verification. Cross-checks that don't depend on this
+repo: the key fingerprint below, and GitHub's copy of the account's keys at
+`https://github.com/pietercastle-dev.keys`.
+
+Release signing key (ed25519):
+
+```
+SHA256:WQIw4F/IJqMT7GLmiUsbZ3+7pF26JhkHYzf75DvZSXo
+```
+
+To confirm the plugin you *installed* matches the tag you *audited*, diff the
+installed cache against the tagged tree:
+
+```sh
+git checkout v1.0.0
+diff -r ~/.claude/plugins/cache/mcp-locksmith/mcp-secure/<version>/ plugins/mcp-secure/
+```
+
+CI runs `claude plugin validate --strict` on every push, so a release that
+doesn't validate can't ship quietly.
+
 ## Reporting a vulnerability
 
 Report **privately**: GitHub's private vulnerability reporting on this repo

@@ -4,6 +4,8 @@
   "version": "0.4.0",
   "description": "Safely add tools (MCP servers) to Claude. Keeps your API keys out of config and out of the chat, safety-checks new tools, and flags ones that change. Run /mcp-secure:setup to start.",
   "author": { "name": "pietercastle-dev" },
+  "homepage": "https://github.com/pietercastle-dev/mcp-locksmith",
+  "repository": "https://github.com/pietercastle-dev/mcp-locksmith",
   "keywords": ["mcp", "secrets", "security", "1password", "sops", "bitwarden"],
   "license": "MIT"
 }

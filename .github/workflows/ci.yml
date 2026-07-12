@@ -60,7 +60,8 @@ jobs:
                    plugins/*/.claude-plugin/plugin.json \
                    plugins/mcp-secure/hooks/hooks.json \
                    plugins/mcp-secure/bundles/*.json \
-                   plugins/mcp-globals/.mcp.json; do
+                   plugins/mcp-secure/templates/globals-profile/.mcp.json \
+                   plugins/mcp-secure/templates/globals-profile/.claude-plugin/plugin.json; do
             python -c "import json,sys; json.load(open(sys.argv[1]))" "$f"
           done
 
@@ -71,3 +72,16 @@ jobs:
             echo "== $t"
             python "$t"
           done
+
+  # Separate job: the harness's own linter for plugin + marketplace manifests.
+  # The CLI is npm-pinned so this job can't drift under us silently.
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Install Claude Code (pinned)
+        run: npm install -g @anthropic-ai/claude-code@2.1.207
+      - name: Validate manifests (strict)
+        run: |
+          claude plugin validate . --strict
+          claude plugin validate plugins/mcp-secure --strict

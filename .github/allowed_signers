@@ -1,0 +1,4 @@
+# SSH allowed-signers file for verifying this repo's release tags.
+# Usage: git -c gpg.ssh.allowedSignersFile=.github/allowed_signers verify-tag vX.Y.Z
+# See SECURITY.md "Verify what you installed" for what this does and doesn't prove.
+280201722+pietercastle-dev@users.noreply.github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIN58AvG6rBezKLfZwlHqUVy1yOPV6/BdKOG55rTImuNZ
