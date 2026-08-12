@@ -95,7 +95,10 @@ def install_hint(*pkgs):
 head("secret backend")
 if not backend:
     warn(f"no default backend in {cfg_path} (only fully-qualified refs will resolve)")
-    tip(f"pick one (1Password / Bitwarden / SOPS): {BACKENDS_DOC}")
+    if sys.platform == "darwin":
+        tip(f"pick one (macOS Keychain needs no install; or 1Password / Bitwarden / SOPS): {BACKENDS_DOC}")
+    else:
+        tip(f"pick one (1Password / Bitwarden / SOPS): {BACKENDS_DOC}")
 else:
     ok(f"default backend: {backend}")
     if backend == "op":
@@ -135,6 +138,15 @@ else:
                 tip('unlock: `export BW_SESSION="$(bw unlock --raw)"` in this shell')
         if not shutil.which("jq"):
             warn("jq not installed (needed for bw refs)"); tip(install_hint("jq"))
+    elif backend == "keychain":
+        # Nothing to install: macOS ships security(1). Only the platform can be wrong.
+        if sys.platform != "darwin":
+            warn("keychain backend configured but this isn't macOS; keychain refs won't resolve here")
+            tip(f"pick a backend that runs here (1Password / Bitwarden / SOPS): {BACKENDS_DOC}")
+        elif shutil.which("security"):
+            ok("macOS Keychain reachable (security)")
+        else:
+            bad("macOS 'security' command not found on PATH"); fails += 1
 
 
 # Literal-secret detection for EXISTING config (mirrors mcp-guard.py, keep in sync).
@@ -149,7 +161,7 @@ _SECRET_VAL = re.compile(
     r"AIza[0-9A-Za-z_\-]{30,}|-----BEGIN[ A-Z]*PRIVATE KEY-----|"
     r"[a-z][a-z0-9+.\-]*://[^/?#@\s:]+:[^/?#@\s]+@)")
 _SAFE_VAL = re.compile(
-    r"^\s*(?:(?:Bearer|Basic|Token)\s+)?(\$\{[^}]+\}|\$[A-Za-z_]\w*|op://|sops://|bw://)",
+    r"^\s*(?:(?:Bearer|Basic|Token)\s+)?(\$\{[^}]+\}|\$[A-Za-z_]\w*|op://|sops://|bw://|keychain://)",
     re.I)
 
 
@@ -201,7 +213,7 @@ def refs_from_server(spec):
                 refs.add(pair.split("=", 1)[1])
         i += 1
     def scan(v):
-        if isinstance(v, str) and v.startswith(("op://", "sops://", "bw://")):
+        if isinstance(v, str) and v.startswith(("op://", "sops://", "bw://", "keychain://")):
             refs.add(v)
     for v in args:
         scan(v)
@@ -241,7 +253,8 @@ else:
     for p, name, where in inline_found:
         bad(f"{name}: literal secret at {where} in {p}"); fails += 1
     tip("move it to a reference: keep the value in your vault and launch via "
-        "mcp-launch (op://… / sops://… / bw://…). /mcp-secure:audit can migrate it.")
+        "mcp-launch (op://… / sops://… / bw://… / keychain://…). "
+        "/mcp-secure:audit can migrate it.")
 
 head("reference resolution")
 if not paths:

@@ -7,6 +7,22 @@ plugin's `.claude-plugin/plugin.json`.
 ## [Unreleased]
 
 ### Added
+- **macOS Keychain backend (`keychain://`)** — the zero-dependency option:
+  macOS already ships `security`, so a Mac needs nothing installed to keep a
+  key out of config. `keychain://<service>[/<account>]` (short refs
+  `<item>[/<field>]` when `MCP_SECRET_BACKEND=keychain`) resolves via
+  `security find-generic-password -w`. **Read-only by design**: `mcp-secret`
+  never creates or modifies a keychain item; users store one themselves with
+  `security add-generic-password -s <service> -a mcp -w` (the bare `-w`
+  prompts, so the value never reaches argv or shell history). This upgrades
+  `install.sh`'s no-vault path on a Mac from "no secrets possible" to "secrets,
+  zero installs", and beats a passphrase-less age key on disk at rest.
+  Detected last, so an installed vault CLI stays the suggested default; on
+  non-macOS it errors clearly at resolve time and `mcp-doctor` warns rather
+  than failing. The vault backends (`op`/`sops`/`bw`) remain the
+  recommendation for teams and multi-machine setups: the Keychain has no sync
+  or sharing story. Refs are recognized as safe by both guards, `mcp-doctor`,
+  and the audit/remove flows.
 - **Real exemplars replace the placeholder.** The shipped set is now three
   vetted, exact-pinned demonstrations of the pattern: `frontend` (no secret),
   `github` (official GitHub remote tool over HTTP, read-only endpoint, PAT via

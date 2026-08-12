@@ -21,7 +21,7 @@ Steps:
    and `~/.claude.json` (user/global scope + the current project's entry). Note which
    file it lives in. That determines how you remove it.
 2. **Check whether it uses a secret.** Inspect its config for a secret reference: an
-   `mcp-launch --secret/--arg` ref, or an `op://` / `sops://` / `bw://` value in
+   `mcp-launch --secret/--arg` ref, or an `op://` / `sops://` / `bw://` / `keychain://` value in
    `env`/`args`. If it has one, capture the reference (e.g. `op://Work/github/token`);
    you'll need it for step 5. (Never print a resolved secret value, only the reference.)
 3. **Confirm.** Tell the user plainly what you're about to remove, from which scope,
@@ -37,7 +37,9 @@ Steps:
    - **Revoke or rotate that token at the provider** (e.g. delete the GitHub PAT /
      rotate the API key) so it can't be used even if it leaks later.
    - **Delete the now-unused item from their vault** (1Password / Bitwarden / the SOPS
-     file), *only if no other tool still references it*. Check the other configs first.
+     file; for a `keychain://<service>/<account>` ref, that's
+     `security delete-generic-password -s <service> -a <account>`, which they run
+     themselves), *only if no other tool still references it*. Check the other configs first.
    Do **not** delete vault items or revoke tokens yourself. You can't, and shouldn't;
    guide the user to do it. If the tool had no secret, say so and skip this.
 6. **Clean up the pin.** Run `mcp-pin unpin <name>` so `/mcp-secure:check` stops

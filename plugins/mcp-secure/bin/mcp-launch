@@ -20,7 +20,8 @@
 # listed by `ps`. Only use --arg when the server has no env-var option.
 #   --                  everything after is the real command + its args
 #
-# `ref` is anything mcp-secret accepts: a short ref or op:// / sops:// / bw://.
+# `ref` is anything mcp-secret accepts: a short ref, or op:// / sops:// / bw:// /
+# keychain:// (macOS Keychain).
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

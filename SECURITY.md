@@ -48,8 +48,8 @@ It is **defense-in-depth, not a sandbox.** It does **not**:
   process operating outside it.
 - **Protect a compromised machine.** It assumes your account, vault login, and
   age private key aren't already in an attacker's hands.
-- **Replace your vault's security.** 1Password / Bitwarden / SOPS+age are the
-  root of trust.
+- **Replace your vault's security.** 1Password / Bitwarden / SOPS+age, or the
+  macOS login Keychain, are the root of trust.
 - **Run on native Windows.** The helpers are bash/python and the hooks assume a
   POSIX environment; macOS and Linux are supported, Windows via WSL only.
 

@@ -38,6 +38,10 @@ avail=()
 command -v op   >/dev/null 2>&1 && avail+=("op")
 command -v sops >/dev/null 2>&1 && avail+=("sops")
 command -v bw   >/dev/null 2>&1 && avail+=("bw")
+# macOS Keychain needs nothing installed (`security` ships with the OS), so it's
+# the fallback that's always there on a Mac. Appended LAST so an actual vault CLI
+# stays the suggested default when one is present.
+[ "$(uname -s 2>/dev/null || true)" = "Darwin" ] && command -v security >/dev/null 2>&1 && avail+=("keychain")
 
 CFG="$CFG_DIR/config"
 if [ -e "$CFG" ]; then
@@ -47,9 +51,9 @@ if [ -e "$CFG" ]; then
   # exactly on the misconfigured-file case this check exists to warn about.
   kept_backend="$(grep -E '^[[:space:]]*MCP_SECRET_BACKEND[[:space:]]*=' "$CFG" 2>/dev/null | tail -1 | cut -d= -f2- | tr -d '[:space:]' || true)"
   case "$kept_backend" in
-    op|sops|bw) ;;
+    op|sops|bw|keychain) ;;
     "") warn "no MCP_SECRET_BACKEND in $CFG. Short refs won't resolve. Edit it, or 'rm $CFG' and re-run." ;;
-    *)  warn "MCP_SECRET_BACKEND in $CFG is '$kept_backend', not a valid backend (op/sops/bw). 'rm $CFG' and re-run, or fix it by hand." ;;
+    *)  warn "MCP_SECRET_BACKEND in $CFG is '$kept_backend', not a valid backend (op/sops/bw/keychain). 'rm $CFG' and re-run, or fix it by hand." ;;
   esac
 elif [ "${#avail[@]}" -eq 0 ]; then
   warn "no secret backend CLI found (op / sops / bw). Install one, then create $CFG."
@@ -60,14 +64,14 @@ else
     printf "Default backend for short refs [%s]: " "${avail[0]}"
     read -r default </dev/tty || true
   fi
-  # Strip stray whitespace, then validate: a backend MUST be op/sops/bw. This
-  # guards against a fat-fingered or pasted answer landing in the config as a
+  # Strip stray whitespace, then validate: a backend MUST be op/sops/bw/keychain.
+  # This guards against a fat-fingered or pasted answer landing in the config as a
   # bogus backend (which would break every secret resolution).
   default="$(printf '%s' "$default" | tr -d '[:space:]')"
   [ -z "$default" ] && default="${avail[0]}"
   case "$default" in
-    op|sops|bw) ;;
-    *) warn "'$default' isn't a known backend (op/sops/bw); using ${avail[0]} instead."
+    op|sops|bw|keychain) ;;
+    *) warn "'$default' isn't a known backend (op/sops/bw/keychain); using ${avail[0]} instead."
        default="${avail[0]}" ;;
   esac
   {
@@ -79,6 +83,12 @@ else
     esac
   } > "$CFG"
   info "wrote $CFG (default backend: $default). Edit vault/file as needed"
+  if [ "$default" = "keychain" ]; then
+    echo "   macOS Keychain: nothing to install. Put a value in it with"
+    echo "     security add-generic-password -s <tool> -a mcp -w"
+    echo "   (the bare -w prompts for the value, so it never hits your shell"
+    echo "   history), then reference it as  keychain://<tool>/mcp"
+  fi
 fi
 [ -f "$CFG" ] && chmod 600 "$CFG"
 

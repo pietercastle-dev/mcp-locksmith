@@ -21,11 +21,15 @@ class DoctorEnv(unittest.TestCase):
         open(self.resolver, "w").write("#!/bin/sh\nprintf 'v'\n")
         os.chmod(self.resolver, os.stat(self.resolver).st_mode | stat.S_IEXEC)
 
-    def doctor(self, servers, *flags):
+    def doctor(self, servers, *flags, backend=None):
         cfg = os.path.join(self.root, "cfg.json")
         json.dump({"mcpServers": servers}, open(cfg, "w"))
+        secret_cfg = os.path.join(self.root, "none")
+        if backend:
+            secret_cfg = os.path.join(self.root, "mcp-secret-config")
+            open(secret_cfg, "w").write("MCP_SECRET_BACKEND=%s\n" % backend)
         env = dict(os.environ, MCP_SECRET_BIN=self.resolver, HOME=self.root,
-                   MCP_SECRET_CONFIG=os.path.join(self.root, "none"),
+                   MCP_SECRET_CONFIG=secret_cfg,
                    MCP_ORG_CONFIG=os.path.join(self.root, "none"))
         return subprocess.run([sys.executable, DOCTOR, *flags, cfg],
                               capture_output=True, text=True, env=env)
@@ -73,6 +77,29 @@ class DoctorEnv(unittest.TestCase):
     def test_launch_check_missing_command(self):
         r = self.doctor({"f": {"command": "/nonexistent-cmd-xyz", "args": []}}, "--launch")
         self.assertEqual(r.returncode, 1)
+
+    def test_keychain_backend_is_recognized(self):
+        # keychain is a known backend, so it must be reported, never treated as
+        # missing/unknown. On macOS that's "reachable"; elsewhere a warning that
+        # the refs won't resolve here (a warning, so Linux CI stays green).
+        r = self.doctor({}, backend="keychain")
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertIn("default backend: keychain", r.stdout)
+        if sys.platform == "darwin":
+            self.assertIn("macOS Keychain reachable", r.stdout)
+        else:
+            self.assertIn("isn't macOS", r.stdout)
+
+    def test_keychain_reference_is_collected_and_not_flagged(self):
+        r = self.doctor({
+            "a": {"command": "mcp-launch",
+                  "args": ["--secret", "T=keychain://cloudflare/mcp", "--", "srv"]},
+            "b": {"command": "srv", "env": {"API_TOKEN": "keychain://svc/acct"}},
+        })
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertIn("no literal secrets in config", r.stdout)
+        self.assertIn("keychain://cloudflare/mcp", r.stdout)
+        self.assertIn("keychain://svc/acct", r.stdout)
 
     def test_unresolvable_reference_fails(self):
         open(self.resolver, "w").write("#!/bin/sh\necho 'nope' >&2\nexit 1\n")

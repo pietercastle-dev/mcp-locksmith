@@ -50,6 +50,17 @@ Any shipped version needs the Gate-1 bar first: real-session proof of zero
 unwarranted asks and no felt latency. Until then, the existing coupling
 stands: VETTING.md recommends sfw for fetches, mcp-doctor detects it.
 
+## Linux `secret-tool` backend: deferred (post-1.0)
+
+The macOS Keychain backend (`keychain://`, shipped) works because `security` is
+already on every Mac, so it costs the user nothing. The Linux sibling would be
+`secret-tool` (libsecret, talking to gnome-keyring or KWallet), and it isn't the
+same deal: it needs a package installed, a running keyring daemon, and an
+unlocked session, which on a headless box or in a container is exactly where it
+falls apart. That's a support surface for a backend whose whole pitch is "no
+setup". Deferred until someone actually wants it; `sops` covers the same
+zero-SaaS ground on Linux today, with a key file that works headless.
+
 ## Org gateway routing & policy enforcement: deferred
 
 The org-config **pointer layer** shipped in v0.3.0 (`org.json`: docs link +

@@ -23,7 +23,7 @@ What to check, across the current repo's `.mcp.json` and `~/.claude.json` (user 
 1. **Inline secrets to references.** Run `mcp-doctor`; it flags any literal secret
    sitting in `env`/`args`/`headers`. For each, offer to migrate it: move the value into the
    user's vault and rewrite the entry to launch via `mcp-launch` with a reference
-   (`op://…` / `sops://…` / `bw://…`). This is the highest-value fix and the thing this
+   (`op://…` / `sops://…` / `bw://…` / `keychain://…`). This is the highest-value fix and the thing this
    harness uniquely does. Lead with it. (Never print the resolved secret value.)
 2. **Unpinned versions.** Flag servers launched with `@latest`, a bare `npx -y <pkg>`
    (no `@version`), or `uvx <pkg>` without a version. Offer to pin the current exact

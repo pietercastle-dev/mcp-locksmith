@@ -7,6 +7,7 @@ without MCP_SECRET_BACKEND would have died instead of warning.
 Run: python3 test_install.py
 """
 import os
+import stat
 import subprocess
 import tempfile
 import unittest
@@ -20,11 +21,32 @@ INSTALL = os.path.join(REPO, "install.sh")
 BARE_PATH = "/usr/bin:/bin:/usr/sbin:/sbin"
 HELPERS = ("mcp-secret", "mcp-launch", "mcp-bundles", "mcp-doctor", "mcp-pin")
 
+# The keychain backend is offered only on macOS, so the OS has to be a testable
+# input: shim `uname` (and `security`) rather than branching on the host. That
+# also keeps a real Mac out of the picture, so both CI runners see one behavior.
+UNAME_SHIM = "#!/bin/sh\nprintf '%s\\n' '{os}'\n"
+SECURITY_SHIM = "#!/bin/sh\nexit 0\n"   # presence is all install.sh checks
 
-def run_install(home):
+
+def _shim_dir(root, os_name, with_security):
+    d = os.path.join(root, "shims")
+    os.makedirs(d, exist_ok=True)
+    files = {"uname": UNAME_SHIM.format(os=os_name)}
+    if with_security:
+        files["security"] = SECURITY_SHIM
+    for name, body in files.items():
+        p = os.path.join(d, name)
+        with open(p, "w") as fh:
+            fh.write(body)
+        os.chmod(p, os.stat(p).st_mode | stat.S_IEXEC)
+    return d
+
+
+def run_install(home, os_name="Linux", with_security=False):
+    shims = _shim_dir(home, os_name, with_security)
     return subprocess.run(
         ["bash", INSTALL, "--non-interactive"],
-        env={"HOME": home, "PATH": BARE_PATH},
+        env={"HOME": home, "PATH": shims + os.pathsep + BARE_PATH},
         capture_output=True,
         text=True,
     )
@@ -61,6 +83,44 @@ class TestInstall(unittest.TestCase):
                 % (r.stdout, r.stderr),
             )
             self.assertIn("no MCP_SECRET_BACKEND", r.stderr)
+
+    def test_macos_offers_keychain_with_no_vault_cli(self):
+        # macOS ships `security`, so a Mac always has a backend available even
+        # with no vault CLI installed: the zero-install path.
+        with tempfile.TemporaryDirectory() as home:
+            r = run_install(home, os_name="Darwin", with_security=True)
+            self.assertEqual(
+                r.returncode, 0,
+                "keychain install must exit 0\nstdout: %s\nstderr: %s"
+                % (r.stdout, r.stderr),
+            )
+            self.assertNotIn("no secret backend CLI found", r.stderr)
+            cfg = os.path.join(home, ".config", "mcp-secret", "config")
+            self.assertTrue(os.path.exists(cfg), "config should be written")
+            with open(cfg) as fh:
+                body = fh.read()
+            self.assertIn("MCP_SECRET_BACKEND=keychain", body)
+            self.assertIn("add-generic-password", r.stdout)  # the store recipe
+
+    def test_keychain_not_offered_off_macos(self):
+        # `security` present but not a Mac (or a Linux box that has some other
+        # binary by that name): keychain must not be selected.
+        with tempfile.TemporaryDirectory() as home:
+            r = run_install(home, os_name="Linux", with_security=True)
+            self.assertEqual(r.returncode, 0, r.stderr)
+            self.assertIn("no secret backend CLI found", r.stderr)
+            self.assertFalse(
+                os.path.exists(os.path.join(home, ".config", "mcp-secret", "config")))
+
+    def test_kept_keychain_config_is_valid_not_warned(self):
+        with tempfile.TemporaryDirectory() as home:
+            cfg_dir = os.path.join(home, ".config", "mcp-secret")
+            os.makedirs(cfg_dir)
+            with open(os.path.join(cfg_dir, "config"), "w") as fh:
+                fh.write("MCP_SECRET_BACKEND=keychain\n")
+            r = run_install(home, os_name="Darwin", with_security=True)
+            self.assertEqual(r.returncode, 0, r.stderr)
+            self.assertNotIn("not a valid backend", r.stderr)
 
 
 if __name__ == "__main__":

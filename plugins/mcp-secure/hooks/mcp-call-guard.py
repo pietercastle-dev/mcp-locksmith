@@ -68,7 +68,7 @@ SHAPES = [
     (re.compile(r"-----BEGIN[ A-Z]*PRIVATE KEY-----"), "a private key"),
     (re.compile(r"[a-z][a-z0-9+.\-]*://[^/?#@\s:]+:[^/?#@\s]+@"), "credentials embedded in a URL"),
 ]
-SAFE_REF = re.compile(r"op://|sops://|bw://")
+SAFE_REF = re.compile(r"op://|sops://|bw://|keychain://")
 
 
 def find_credential(obj):
