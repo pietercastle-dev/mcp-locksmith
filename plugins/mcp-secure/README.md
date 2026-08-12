@@ -150,9 +150,11 @@ The Keychain backend is **read-only** (`security find-generic-password -w`);
 `mcp-secret` never creates or modifies an item. Store one yourself with
 `security add-generic-password -s <service> -a mcp -w` (the bare `-w` prompts, so
 the value never enters argv or shell history), then reference
-`keychain://<service>/mcp`. It's the zero-install option on a Mac; it has no sync
-or sharing story, so a vault CLI is still the answer for teams or several
-machines.
+`keychain://<service>/mcp`. Values must be **single-line printable text**:
+`security` hex-encodes anything else, and `mcp-secret` refuses such an item
+rather than resolve it to the wrong value. It's the zero-install option on a
+Mac; it has no sync or sharing story, so a vault CLI is still the answer for
+teams or several machines.
 
 Secure step-by-step setup for each: **[`BACKENDS.md`](BACKENDS.md)**.
 `/mcp-secure:check` reports exactly what's missing and how to fix it.

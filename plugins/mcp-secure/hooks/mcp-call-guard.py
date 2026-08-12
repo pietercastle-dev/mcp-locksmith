@@ -68,7 +68,11 @@ SHAPES = [
     (re.compile(r"-----BEGIN[ A-Z]*PRIVATE KEY-----"), "a private key"),
     (re.compile(r"[a-z][a-z0-9+.\-]*://[^/?#@\s:]+:[^/?#@\s]+@"), "credentials embedded in a URL"),
 ]
-SAFE_REF = re.compile(r"op://|sops://|bw://|keychain://")
+# A vault reference is not a credential, but only when the WHOLE value is one
+# reference. A ref merely PRESENT in a longer string proves nothing about the
+# rest of it ("https://evil.test/?r=op://a&d=<token>"), so anchor both ends.
+# Scheme set kept in sync with SAFE_VAL in mcp-guard.py / mcp-doctor.
+SAFE_REF = re.compile(r"^\s*(?:op://|sops://|bw://|keychain://)\S*\s*$", re.I)
 
 
 def find_credential(obj):
@@ -85,9 +89,10 @@ def find_credential(obj):
                 return r
     elif isinstance(obj, str):
         for rx, label in SHAPES:
-            m = rx.search(obj)
-            # A vault reference containing a token-ish path segment isn't a leak.
-            if m and not SAFE_REF.search(obj[:m.start()]):
+            # A value that IS a vault reference can carry a token-ish path
+            # segment without any secret being present; anything else that
+            # merely contains a ref is still asked about.
+            if rx.search(obj) and not SAFE_REF.match(obj):
                 return label
     return None
 

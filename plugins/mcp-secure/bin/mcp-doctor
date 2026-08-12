@@ -161,7 +161,9 @@ _SECRET_VAL = re.compile(
     r"AIza[0-9A-Za-z_\-]{30,}|-----BEGIN[ A-Z]*PRIVATE KEY-----|"
     r"[a-z][a-z0-9+.\-]*://[^/?#@\s:]+:[^/?#@\s]+@)")
 _SAFE_VAL = re.compile(
-    r"^\s*(?:(?:Bearer|Basic|Token)\s+)?(\$\{[^}]+\}|\$[A-Za-z_]\w*|op://|sops://|bw://|keychain://)",
+    r"^\s*(?:(?:Bearer|Basic|Token)\s+)?"
+    r"(\$\{[A-Za-z_]\w*\}|\$[A-Za-z_]\w*|op://\S*|sops://\S*|bw://\S*|keychain://\S*)"
+    r"(?:[/\\][^\s]*)?\s*$",
     re.I)
 
 
@@ -194,6 +196,47 @@ def inline_secrets(spec):
         if isinstance(a, str) and _SECRET_VAL.search(a):
             hits.append(f"args[{i}]")
     return hits
+
+
+# Claude Code's per-project approval state for .mcp.json servers, READ ONLY from
+# ~/.claude.json (never written here). A .mcp.json arrives with a cloned repo, so
+# until the user approves it its `command`/refs are untrusted input: the static
+# checks below still cover such a server, but nothing spawns or resolves it.
+# Keep in sync with mcp-pin's copy.
+def project_approval(project_dir):
+    """(enable_all, enabled, disabled, trusted) for `project_dir`.
+
+    `trusted` is the folder trust dialog ("do you trust the files in this
+    folder"), which in practice is what admits a repo's .mcp.json: on a real
+    machine the per-server lists stay EMPTY for repos whose servers load fine,
+    so trust is the signal that carries, and the lists refine it. A directory
+    with no entry at all, or one never trusted, has never been opened here."""
+    try:
+        data = json.load(open(os.path.join(os.path.expanduser("~"), ".claude.json")))
+        projects = data.get("projects") or {}
+    except Exception:
+        projects = {}
+    proj = projects.get(project_dir)
+    if not isinstance(proj, dict):  # a symlinked dir is recorded either way
+        proj = projects.get(os.path.realpath(project_dir))
+    if not isinstance(proj, dict):
+        return False, set(), set(), False
+    return (bool(proj.get("enableAllProjectMcpServers")),
+            set(proj.get("enabledMcpjsonServers") or []),
+            set(proj.get("disabledMcpjsonServers") or []),
+            bool(proj.get("hasTrustDialogAccepted")))
+
+
+def approval_state(name, approval):
+    """"approved" | "disabled" | "unapproved" for a project-scope server.
+    An explicit disable wins over both blanket forms: the user said no to this
+    one by name."""
+    enable_all, enabled, disabled, trusted = approval
+    if name in disabled:
+        return "disabled"
+    if enable_all or trusted or name in enabled:
+        return "approved"
+    return "unapproved"
 
 
 def refs_from_server(spec):
@@ -230,18 +273,37 @@ paths = argv or [p for p in ["./.mcp.json", os.path.expanduser("~/.claude.json")
 collected = []
 inline_found = []
 all_servers = []
+unapproved = []
 for p in paths:
     try:
         data = json.load(open(p))
     except Exception as e:
         warn(f"skip {p}: {e}"); continue
+    # Project scope is the gated one: a .mcp.json travels with the repo.
+    project_scope = os.path.basename(p) == ".mcp.json"
+    approval = project_approval(os.path.dirname(os.path.abspath(p))) if project_scope else None
     for name, spec in (data.get("mcpServers") or {}).items():
         if isinstance(spec, dict):
+            # Static checks run for every server, approved or not.
+            for where in inline_secrets(spec):
+                inline_found.append((p, name, where))
+            state = approval_state(name, approval) if project_scope else "approved"
+            if state != "approved":
+                unapproved.append((p, name, state)); continue
             all_servers.append((name, spec))
             for ref in refs_from_server(spec):
                 collected.append((name, ref))
-            for where in inline_secrets(spec):
-                inline_found.append((p, name, where))
+
+if unapproved:
+    head("awaiting your approval")
+    for p, name, state in unapproved:
+        if state == "disabled":
+            info(f"{name}: turned off for this project in Claude Code ({p})")
+        else:
+            info(f"{name}: not approved in Claude Code yet ({p}). Restart Claude Code "
+                 "and approve it, then re-run")
+    tip("the checks below still read these servers' config; nothing unapproved is "
+        "launched and none of its secret references are resolved.")
 
 # --- literal secrets already in config (the guard only stops NEW ones) ---
 head("inline secrets")

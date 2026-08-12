@@ -22,7 +22,7 @@ echo "$out" | grep -q "no secret backend CLI found" && ok "no-backend warning sh
 [ -L /home/dog/h1/.local/bin/mcp-secret ] && ok "helpers linked" || bad "helpers not linked"
 
 say "install.sh with sops+age available (Linux ranking: sops is the only option)"
-export HOME=/home/dog/h2; mkdir -p "$HOME"; cd "$HOME"
+export HOME=/home/dog/h2; mkdir -p "$HOME"; cd "$HOME" || exit 1
 bash "$R/install.sh" --non-interactive >/tmp/i2.log 2>&1 && ok "exit 0" || bad "install: $(tail -2 /tmp/i2.log)"
 export PATH="$HOME/.local/bin:$PATH"
 grep -q "^MCP_SECRET_BACKEND=sops$" "$HOME/.config/mcp-secret/config" 2>/dev/null \
@@ -48,17 +48,21 @@ mcp-launch --secret "DOG_SECRET=sops://$SFILE#/DOG_SECRET" -- python3 /tmp/check
   && ok "spawn-time injection works" || bad "spawn-time injection failed"
 
 say "pin, verify, and the rug-pull tripwire (env-driven fixture)"
-mkdir -p "$HOME/proj"; cd "$HOME/proj"
+mkdir -p "$HOME/proj"; cd "$HOME/proj" || exit 1
 printf '{"mcpServers":{"fake":{"type":"stdio","command":"python3","args":["%s"]}}}\n' \
   "$R/plugins/mcp-secure/tests/fake_mcp_server.py" > .mcp.json
 FAKE_TOOLS="alpha,beta" mcp-pin pin fake >/tmp/pin.log 2>&1 \
-  && grep -q "2 tool" /tmp/pin.log && ok "pinned 2 tools" || bad "pin: $(tail -2 /tmp/pin.log)"
+  && grep -q "pinned 2 tool" /tmp/pin.log && ok "pinned 2 tools" || bad "pin: $(tail -2 /tmp/pin.log)"
 FAKE_TOOLS="alpha,beta" mcp-pin verify >/tmp/v1.log 2>&1 \
   && ok "verify: unchanged" || bad "clean verify failed: $(tail -2 /tmp/v1.log)"
-if FAKE_TOOLS="alpha,beta,gamma" mcp-pin verify >/tmp/v2.log 2>&1; then
-  bad "rug-pull NOT flagged (verify exited 0 after tool change)"
+FAKE_TOOLS="alpha,beta,gamma" mcp-pin verify >/tmp/v2.log 2>&1; rc=$?
+# A non-zero exit alone isn't proof of drift detection — a crash or unreadable
+# config also exits non-zero. Require BOTH: non-zero exit AND the literal
+# DRIFT token mcp-pin prints on an actual tool-surface change.
+if [ "$rc" -ne 0 ] && grep -q "DRIFT" /tmp/v2.log; then
+  ok "rug-pull flagged: $(grep -o 'DRIFT.*' /tmp/v2.log | head -1)"
 else
-  ok "rug-pull flagged: $(grep -io 'drift[a-z]*\|changed\|new tool[s]*' /tmp/v2.log | head -1)"
+  bad "rug-pull NOT flagged (exit=$rc, DRIFT token present=$(grep -q DRIFT /tmp/v2.log && echo yes || echo no)): $(tail -5 /tmp/v2.log)"
 fi
 
 say "hooks fire from a plain clone (the dead-call-guard regression class)"
@@ -69,8 +73,16 @@ TOK=$(printf '%s%s' "ghp_" "EXAMPLEONLYnotarealtoken00")
 ev() { printf '{"tool_name":"Bash","tool_input":{"command":"%s"}}' "$1"; }
 outd=$(ev "$A -s user foo -e TOKEN=$TOK -- bar" | python3 "$G" 2>&1)
 echo "$outd" | grep -q '"deny"' && ok "literal secret in a config write -> deny" || bad "guard did not deny literal secret: $outd"
-outa=$(ev "$A foo -e TOKEN_REF=keychain://svc/acct -- bar" | python3 "$G" 2>&1)
-if echo "$outa" | grep -q '"deny"'; then bad "keychain ref wrongly denied"; else ok "keychain ref allowed"; fi
+outa=$(ev "$A foo -e TOKEN_REF=keychain://svc/acct -- bar" | python3 "$G" 2>&1); rca=$?
+# A crashing guard also produces output with no "deny" in it — that's not the
+# same as a considered allow. Require a clean exit and no traceback too.
+if [ "$rca" -ne 0 ] || echo "$outa" | grep -q "Traceback"; then
+  bad "guard crashed on keychain ref (exit=$rca): $outa"
+elif echo "$outa" | grep -q '"deny"'; then
+  bad "keychain ref wrongly denied"
+else
+  ok "keychain ref allowed"
+fi
 
 say "doctor on the fresh setup"
 if mcp-doctor >/tmp/doc.log 2>&1; then ok "doctor: all good"; else bad "doctor: $(grep -m2 -v '^$' /tmp/doc.log | tail -1)"; fi

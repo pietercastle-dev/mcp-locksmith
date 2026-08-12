@@ -18,9 +18,12 @@ For anything beyond the checks below, point the user at those tools rather than
 reinventing them.
 
 What to check, across the current repo's `.mcp.json` and `~/.claude.json` (user scope
-+ this project's entry):
++ this project's entry). **Steps 1-3 read config only; do them first.** Step 4 is the
+only one that starts a tool, so nothing gets launched until the config has been looked
+at:
 
-1. **Inline secrets to references.** Run `mcp-doctor`; it flags any literal secret
+1. **Inline secrets to references.** Run `mcp-doctor` (no `--launch`: it reads config,
+   it doesn't start anything); it flags any literal secret
    sitting in `env`/`args`/`headers`. For each, offer to migrate it: move the value into the
    user's vault and rewrite the entry to launch via `mcp-launch` with a reference
    (`op://…` / `sops://…` / `bw://…` / `keychain://…`). This is the highest-value fix and the thing this
@@ -29,8 +32,13 @@ What to check, across the current repo's `.mcp.json` and `~/.claude.json` (user 
    (no `@version`), or `uvx <pkg>` without a version. Offer to pin the current exact
    version. It's both reproducibility and the rug-pull defense.
 3. **Plaintext transport.** Flag any `http://` (non-TLS) URL to a non-local host.
-4. **Unpinned baselines.** Run `mcp-pin verify`; for each "not pinned" server, offer to
+4. **Unpinned baselines.** Run `mcp-pin verify`; this one *starts* each tool briefly to
+   read its tool list. For each "not pinned" server, offer to
    review its tools and `mcp-pin pin <name>` so future `/mcp-secure:check` runs catch drift.
+   A tool from the repo's `.mcp.json` that the user hasn't approved in Claude Code yet is
+   skipped here by design (an unapproved `.mcp.json` came with the repo, so an audit must
+   not be what runs it): say so plainly, and that approving it in Claude Code, or naming it
+   (`mcp-pin pin <name>`), is what makes it verifiable.
 5. **Hand off the deep stuff.** If the user wants real provenance / tool-poisoning /
    vulnerability analysis, point them to `VETTING.md` and the optional scanners it
    names (Cisco `mcp-scanner` local-first, or Snyk `agent-scan`). Don't attempt it here.

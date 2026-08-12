@@ -6,6 +6,42 @@ plugin's `.claude-plugin/plugin.json`.
 
 ## [Unreleased]
 
+### Security
+- **Project servers now require your approval before the harness will spawn
+  them** (found in the pre-1.0 security audit, HIGH). `mcp-pin pin/verify` and
+  `mcp-doctor` used to launch whatever a project `.mcp.json` declared —
+  including running `headersHelper` through a shell — even for servers you had
+  never accepted, which meant the *audit* flow could execute code from a repo
+  you just cloned. Both tools now read Claude Code's own per-project state
+  (explicit disable wins; folder trust, enable-all, or a by-name enable
+  approves) and skip unapproved project servers with a one-line note. Consent
+  still has three doors, none requiring a restart mid-flow: a server you name
+  explicitly always runs, an existing pin is a durable approval, and Claude
+  Code's own approval covers the rest. Static config checks still run for
+  skipped servers; their helpers and secret references are never touched.
+- **Decoy-reference bypass of the exfiltration tripwire closed** (MED-HIGH,
+  probe-confirmed). A vault-looking ref (`op://…`) placed anywhere earlier in a
+  string used to silence the ask for a real credential after it — the exact
+  shape a tool-poisoning payload would use. The tripwire now stays quiet only
+  when the entire value is a single reference; regression tests cover the URL,
+  newline, and PEM decoy shapes.
+- **Prefix-smuggling into config closed** (MED, probe-confirmed).
+  `${EMPTY}<token>`, `${VAR:-<token>}`, and `<ref> <token>` passed the write
+  guard as "safe" because the safe-value pattern only anchored the front; the
+  attached `-eNAME=<token>` form evaded the env scan entirely. The pattern now
+  anchors both ends (an expansion followed by a path, like `${TMPDIR}/sock`,
+  stays allowed), the `-e` scan catches attached forms, and the keep-in-sync
+  suite now also pins the runtime guard's scheme set so a future backend can't
+  drift it.
+- **Keychain backend refuses silently-corrupted values.** Real `security -w`
+  hex-encodes any stored value containing control bytes or non-ASCII — so a
+  PEM key or multi-line JSON credential stored in the Keychain would have
+  resolved to a wrong-but-nonempty hex string and failed downstream with no
+  explanation. `mcp-secret` now detects the encoding (confirming via
+  `security -g` only in the ambiguous case, so genuinely-hex API keys still
+  resolve) and errors in plain language; docs steer multi-line secrets to a
+  vault backend.
+
 ### Added
 - **macOS Keychain backend (`keychain://`)** — the zero-dependency option:
   macOS already ships `security`, so a Mac needs nothing installed to keep a

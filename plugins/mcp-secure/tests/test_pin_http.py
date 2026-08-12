@@ -51,6 +51,12 @@ class HttpPinEnv(unittest.TestCase):
         spec.update(extra or {})
         json.dump({"mcpServers": {name: spec}},
                   open(os.path.join(self.root, ".mcp.json"), "w"))
+        # Claude Code's approval record for this project: without it a sweep
+        # skips the server rather than connecting to it (and a headersHelper
+        # from an unapproved .mcp.json is never run).
+        json.dump({"projects": {os.path.realpath(self.root): {
+            "enabledMcpjsonServers": [name], "disabledMcpjsonServers": []}}},
+            open(os.path.join(self.root, ".claude.json"), "w"))
 
     def pin(self, *args):
         e = dict(os.environ, MCP_PINS_FILE=self.pins_file, MCP_PIN_TIMEOUT="30",
@@ -115,6 +121,21 @@ class HttpPinEnv(unittest.TestCase):
         r = self.pin("pin")
         self.assertEqual(r.returncode, 1)
         self.assertIn("headersHelper failed", r.stdout)
+
+    def test_headers_helper_never_runs_for_an_unapproved_server(self):
+        # The helper is a shell command straight out of the repo's .mcp.json,
+        # so an unapproved project server must not get as far as running it.
+        marker = os.path.join(self.root, "helper-ran")
+        self.write_config("http://127.0.0.1:1/mcp",
+                          extra={"headersHelper": "touch %s; echo {}" % marker})
+        json.dump({"projects": {}}, open(os.path.join(self.root, ".claude.json"), "w"))
+        r = self.pin("pin")
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertIn("not approved in Claude Code yet", r.stdout)
+        self.assertFalse(os.path.exists(marker), "headersHelper ran unapproved")
+        # …and naming it explicitly is still the escape hatch.
+        r = self.pin("pin", "rfake")
+        self.assertTrue(os.path.exists(marker))
 
     def test_sse_response_body(self):
         port = self.serve(env={"FAKE_TOOLS": "alpha,beta", "FAKE_SSE": "1"})
