@@ -34,14 +34,18 @@ for b in mcp-secret mcp-launch mcp-bundles mcp-doctor mcp-pin; do
 done
 
 # 2) Secret backend default.
+# Detection order is a ranking: avail[0] becomes the suggested default.
+# Vault CLIs (op/bw) first — installing one is a statement of intent, and vaults
+# carry the sync/share/team story. Then macOS Keychain: nothing to install
+# (`security` ships with the OS) and encrypted at rest with no key file to
+# manage. SOPS+age deliberately LAST: it works, but its root of trust is a
+# plaintext age key on disk, so it should be a deliberate choice, never the
+# suggestion. The prompt below shows every detected backend either way.
 avail=()
 command -v op   >/dev/null 2>&1 && avail+=("op")
-command -v sops >/dev/null 2>&1 && avail+=("sops")
 command -v bw   >/dev/null 2>&1 && avail+=("bw")
-# macOS Keychain needs nothing installed (`security` ships with the OS), so it's
-# the fallback that's always there on a Mac. Appended LAST so an actual vault CLI
-# stays the suggested default when one is present.
 [ "$(uname -s 2>/dev/null || true)" = "Darwin" ] && command -v security >/dev/null 2>&1 && avail+=("keychain")
+command -v sops >/dev/null 2>&1 && avail+=("sops")
 
 CFG="$CFG_DIR/config"
 if [ -e "$CFG" ]; then
@@ -83,6 +87,7 @@ else
     esac
   } > "$CFG"
   info "wrote $CFG (default backend: $default). Edit vault/file as needed"
+  info "change it any time: edit MCP_SECRET_BACKEND in $CFG. Fully-qualified refs (op://…, keychain://…) always resolve regardless"
   if [ "$default" = "keychain" ]; then
     echo "   macOS Keychain: nothing to install. Put a value in it with"
     echo "     security add-generic-password -s <tool> -a mcp -w"

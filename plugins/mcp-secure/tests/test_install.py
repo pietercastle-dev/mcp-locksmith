@@ -28,12 +28,14 @@ UNAME_SHIM = "#!/bin/sh\nprintf '%s\\n' '{os}'\n"
 SECURITY_SHIM = "#!/bin/sh\nexit 0\n"   # presence is all install.sh checks
 
 
-def _shim_dir(root, os_name, with_security):
+def _shim_dir(root, os_name, with_security, with_clis=()):
     d = os.path.join(root, "shims")
     os.makedirs(d, exist_ok=True)
     files = {"uname": UNAME_SHIM.format(os=os_name)}
     if with_security:
         files["security"] = SECURITY_SHIM
+    for cli in with_clis:  # fake vault CLIs; presence is all detection checks
+        files[cli] = SECURITY_SHIM
     for name, body in files.items():
         p = os.path.join(d, name)
         with open(p, "w") as fh:
@@ -42,8 +44,8 @@ def _shim_dir(root, os_name, with_security):
     return d
 
 
-def run_install(home, os_name="Linux", with_security=False):
-    shims = _shim_dir(home, os_name, with_security)
+def run_install(home, os_name="Linux", with_security=False, with_clis=()):
+    shims = _shim_dir(home, os_name, with_security, with_clis)
     return subprocess.run(
         ["bash", INSTALL, "--non-interactive"],
         env={"HOME": home, "PATH": shims + os.pathsep + BARE_PATH},
@@ -111,6 +113,41 @@ class TestInstall(unittest.TestCase):
             self.assertIn("no secret backend CLI found", r.stderr)
             self.assertFalse(
                 os.path.exists(os.path.join(home, ".config", "mcp-secret", "config")))
+
+    def _default_backend(self, home):
+        cfg = os.path.join(home, ".config", "mcp-secret", "config")
+        self.assertTrue(os.path.exists(cfg), "config should be written")
+        with open(cfg) as fh:
+            for line in fh:
+                if line.startswith("MCP_SECRET_BACKEND="):
+                    return line.strip().split("=", 1)[1]
+        self.fail("no MCP_SECRET_BACKEND line in config")
+
+    def test_backend_ranking_keychain_beats_sops(self):
+        # sops installed on a Mac: keychain is still the suggestion. SOPS's
+        # root of trust is a plaintext age key on disk; it must be chosen
+        # deliberately, never suggested over the Keychain.
+        with tempfile.TemporaryDirectory() as home:
+            r = run_install(home, os_name="Darwin", with_security=True,
+                            with_clis=("sops",))
+            self.assertEqual(r.returncode, 0, r.stderr)
+            self.assertEqual(self._default_backend(home), "keychain")
+
+    def test_backend_ranking_vault_beats_keychain(self):
+        # A vault CLI (op) is a statement of intent and has the sync/team
+        # story: it outranks the Keychain when present.
+        with tempfile.TemporaryDirectory() as home:
+            r = run_install(home, os_name="Darwin", with_security=True,
+                            with_clis=("op", "sops"))
+            self.assertEqual(r.returncode, 0, r.stderr)
+            self.assertEqual(self._default_backend(home), "op")
+
+    def test_backend_ranking_sops_last_off_macos(self):
+        # No keychain off macOS: a vault CLI still outranks sops.
+        with tempfile.TemporaryDirectory() as home:
+            r = run_install(home, os_name="Linux", with_clis=("bw", "sops"))
+            self.assertEqual(r.returncode, 0, r.stderr)
+            self.assertEqual(self._default_backend(home), "bw")
 
     def test_kept_keychain_config_is_valid_not_warned(self):
         with tempfile.TemporaryDirectory() as home:

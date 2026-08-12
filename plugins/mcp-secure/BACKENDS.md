@@ -10,9 +10,19 @@ follow its section, then run `/mcp-secure:check` to confirm it's wired up.
 | **Bitwarden** | you want a free hosted vault | `bw` (+ `jq`) | `bw://item/field` |
 | **SOPS + age** | you prefer files in git, no SaaS | `sops`, `age` | `sops://file#/key/path` |
 
-The Keychain is the simplest choice for one Mac. The other three are the ones to
-pick if you use more than one machine or share keys with a team: the Keychain has
-no sync or sharing story.
+The Keychain is the simplest choice for one Mac. A vault (1Password/Bitwarden) is
+the pick if you use more than one machine or share keys with a team: the Keychain
+has no sync or sharing story. The installer suggests in that order — vault CLI if
+you have one, otherwise Keychain on a Mac. SOPS is offered last on purpose: it
+works well, but its root of trust is an age key sitting in plain text on disk
+(a passphrase on the key would break unattended spawn-time resolution), so pick
+it deliberately — typically because your secrets already live in a git repo.
+
+**Changing your backend later** is one line: edit `MCP_SECRET_BACKEND` in
+`~/.config/mcp-secret/config` (or `rm` that file and re-run `install.sh`). The
+default only governs *short* refs; fully-qualified refs (`op://…`,
+`keychain://…`, …) always resolve the same regardless, so existing tools keep
+working through a switch.
 
 **Install CLIs from the official source**: your OS package manager or the
 vendor's signed installer, never a random `curl … | sh`.

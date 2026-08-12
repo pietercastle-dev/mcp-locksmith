@@ -17,11 +17,14 @@ plugin's `.claude-plugin/plugin.json`.
   prompts, so the value never reaches argv or shell history). This upgrades
   `install.sh`'s no-vault path on a Mac from "no secrets possible" to "secrets,
   zero installs", and beats a passphrase-less age key on disk at rest.
-  Detected last, so an installed vault CLI stays the suggested default; on
-  non-macOS it errors clearly at resolve time and `mcp-doctor` warns rather
-  than failing. The vault backends (`op`/`sops`/`bw`) remain the
-  recommendation for teams and multi-machine setups: the Keychain has no sync
-  or sharing story. Refs are recognized as safe by both guards, `mcp-doctor`,
+  The installer now ranks backends: a vault CLI (`op`/`bw`) stays the
+  suggested default when installed, the Keychain is next (the always-there
+  option on a Mac), and SOPS+age is offered last — it works, but its root of
+  trust is a plaintext age key on disk, so it should be a deliberate choice
+  rather than the suggestion. On non-macOS the keychain backend errors
+  clearly at resolve time and `mcp-doctor` warns rather than failing. The
+  vault backends remain the recommendation for teams and multi-machine
+  setups: the Keychain has no sync or sharing story. Refs are recognized as safe by both guards, `mcp-doctor`,
   and the audit/remove flows.
 - **Real exemplars replace the placeholder.** The shipped set is now three
   vetted, exact-pinned demonstrations of the pattern: `frontend` (no secret),
