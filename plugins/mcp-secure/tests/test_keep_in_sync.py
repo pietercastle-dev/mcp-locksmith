@@ -64,6 +64,8 @@ SECRET_SAMPLES = [
 SAFE_SAMPLES = [
     "${GITHUB_TOKEN}", "$MYVAR", "op://Vault/item/field",
     "sops://secrets.yaml#/key", "bw://item/field", "Bearer ${TOKEN}",
+    "keychain://cloudflare/token", "keychain://cloudflare",
+    "Bearer keychain://svc/acct",
 ]
 # Not secret-shaped and not a ref (git SHA is a deliberate SECRET_VAL exclusion).
 NEUTRAL_SAMPLES = ["a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2", "hello-world", "8080"]

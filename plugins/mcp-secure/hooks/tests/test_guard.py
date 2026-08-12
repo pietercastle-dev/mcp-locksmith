@@ -30,6 +30,11 @@ CASES = [
     (".mcp.json secret in args array",  {"tool_name": "Write", "tool_input": {"file_path": "/x/.mcp.json", "content": '{"mcpServers":{"s":{"command":"srv","args":["--api-key","sk-EXAMPLEONLYnotarealtoken00"]}}}'}}, "deny"),
     (".mcp.json ref in args array (safe)", {"tool_name": "Write", "tool_input": {"file_path": "/x/.mcp.json", "content": '{"mcpServers":{"s":{"command":"mcp-launch","args":["--arg","--api-key=op://V/s/token","--","srv"]}}}'}}, "allow"),
     (".mcp.json op:// reference",       {"tool_name": "Write", "tool_input": {"file_path": "/x/.mcp.json", "content": '{"env":{"API_KEY_REF":"op://Work/s/token"}}'}}, "allow"),
+    # macOS Keychain refs are references, not secrets (the key name alone would
+    # otherwise trip the key+length heuristic)
+    (".mcp.json keychain:// reference",  {"tool_name": "Write", "tool_input": {"file_path": "/x/.mcp.json", "content": '{"env":{"API_KEY_REF":"keychain://cloudflare/token"}}'}}, "allow"),
+    (".mcp.json keychain ref in args",   {"tool_name": "Write", "tool_input": {"file_path": "/x/.mcp.json", "content": '{"mcpServers":{"s":{"command":"mcp-launch","args":["--secret","TOKEN=keychain://cloudflare/mcp","--","srv"]}}}'}}, "allow"),
+    ("Bash: add-json keychain ref (safe)", {"tool_name": "Bash", "tool_input": {"command": f"{A}-json foo '{{\"env\":{{\"TOKEN\":\"keychain://cloudflare/mcp\"}}}}'"}}, "allow"),
     (".mcp.json ${HOME} path val",      {"tool_name": "Write", "tool_input": {"file_path": "/x/.mcp.json", "content": '{"env":{"OAUTH_CREDENTIAL":"${HOME}/.config/x.json"}}'}}, "allow"),
     ("~/.claude.json mcpServers edit",  {"tool_name": "Edit", "tool_input": {"file_path": f"{HOME}/.claude.json", "new_string": '"mcpServers": {"s":{}}'}}, "ask"),
     ("unrelated file w/ secret-ish",    {"tool_name": "Write", "tool_input": {"file_path": "/x/foo.txt", "content": "API_KEY=sk-EXAMPLEONLYnotarealtoken00"}}, "allow"),

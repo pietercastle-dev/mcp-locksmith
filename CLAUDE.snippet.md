@@ -18,8 +18,9 @@ deliberate.** Managed by the `mcp-secure` plugin.
 
 **Secrets never go in config.** Prefer OAuth where the server supports it (no static
 secret). Otherwise keep the credential in your backend (1Password / SOPS /
-Bitwarden) and launch via `mcp-launch`, passing a *reference* (short ref or
-`op://` / `sops://` / `bw://`), resolved at spawn, never stored. A PreToolUse guard
+Bitwarden, or the macOS Keychain) and launch via `mcp-launch`, passing a
+*reference* (short ref or
+`op://` / `sops://` / `bw://` / `keychain://`), resolved at spawn, never stored. A PreToolUse guard
 blocks literal secrets in any `.mcp.json`; global-scope (`-s user`) adds are allowed
 but confirmed.
 

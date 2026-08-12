@@ -62,7 +62,7 @@ SECRET_VAL = re.compile(
 # Forms that are SAFE: env expansion, a bare $VAR, or an mcp-secret reference,
 # optionally behind an auth scheme, so `Bearer ${TOKEN}` reads as safe too.
 SAFE_VAL = re.compile(
-    r"^\s*(?:(?:Bearer|Basic|Token)\s+)?(\$\{[^}]+\}|\$[A-Za-z_]\w*|op://|sops://|bw://)",
+    r"^\s*(?:(?:Bearer|Basic|Token)\s+)?(\$\{[^}]+\}|\$[A-Za-z_]\w*|op://|sops://|bw://|keychain://)",
     re.I)
 # Basenames that identify an MCP config file written via the shell.
 CONFIG_BASENAMES = (".mcp.json", ".claude.json")

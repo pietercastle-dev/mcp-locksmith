@@ -43,7 +43,7 @@ cases. Figure out which you're in, don't make the user choose:
 ### Ready-made (exemplar or private bundle into this repo)
 
 1. Read each bundle. Ignore any `_comment` key, it's documentation.
-2. **Validate** each bundle before offering it: valid JSON shaped `{ "mcpServers": { ... } }`. If a bundle contains a literal secret (an `env`/`args` value that isn't a `${VAR}`, an `op://`/`sops://`/`bw://` ref, or an `mcp-launch --secret/--arg` ref), warn. Bundles must resolve secrets via `mcp-launch`, never inline them.
+2. **Validate** each bundle before offering it: valid JSON shaped `{ "mcpServers": { ... } }`. If a bundle contains a literal secret (an `env`/`args` value that isn't a `${VAR}`, an `op://`/`sops://`/`bw://`/`keychain://` ref, or an `mcp-launch --secret/--arg` ref), warn. Bundles must resolve secrets via `mcp-launch`, never inline them.
 3. Read the current repo's `.mcp.json` if present (repo root / `$CLAUDE_PROJECT_DIR`). Note which servers already exist.
 4. If `$ARGUMENTS` already named bundle(s), add those. Otherwise use **AskUserQuestion** (multiSelect) so the user picks which tool(s) to add. For each option, describe in plain terms what it gives them (e.g. "a web browser Claude can drive"), and mark any already added.
 5. Merge the chosen bundles' `mcpServers` into the repo's `.mcp.json` (drop `_comment`):
@@ -96,6 +96,7 @@ Work through the checklist, doing real research, don't assume:
      "args": ["--secret", "TOKEN=op://Vault/item/field", "--", "<server>", "<args>"] }
    ```
    Use `--arg FLAG=ref` instead for servers that only take the secret as a CLI flag. Tell the user to store the secret in their backend, scoped to least privilege, and that `mcp-launch` must be on PATH (the marketplace `install.sh` handles that).
+   - Use whichever backend they set up: `op://…`, `sops://…`, `bw://…`, or on a Mac `keychain://<service>/<account>`. Keychain users store the value with `security add-generic-password -s <service> -a mcp -w` (bare `-w` prompts, so the secret stays out of shell history); never pass it as an argument.
 7. **Present findings plainly**: a short, everyday-language summary (who makes it, is it trustworthy, what it can do, does it need a key) plus what you're about to add, and get explicit approval before writing.
 8. **Write**: merge into the **current repo's** `.mcp.json` at project scope only. Never `~/.claude.json`, never user scope. Then tell the user to restart the session to approve it.
 9. **Pin it**: after the server is approved and reachable, run `mcp-pin pin <name>` to record its tool baseline. This is the rug-pull defense: a later `mcp-pin verify` (`/mcp-secure:verify`) will flag if the server changes its tools after approval.

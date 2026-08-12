@@ -35,14 +35,19 @@ Then go through these steps, pausing for the user between each:
    safe basics for now, like a browser tool?"*
    - **Not now / unsure**, so skip vault setup entirely. Reassure them: lots of useful
      tools need no keys, and they can add a vault later by re-running this. Move on.
-   - **Yes**, so recommend the easiest fit: **1Password** if they already use it (it
-     has a normal app), otherwise **Bitwarden** (free hosted) or **SOPS+age** (files
-     in git, no SaaS). Then walk them through the secure setup for that one. The
-     canonical steps live in the plugin's **`BACKENDS.md`**; follow it rather than
-     improvising. The essentials:
+   - **Yes**, so recommend the easiest fit. On a **Mac with no vault app already in
+     use**, the built-in **Keychain** is the least work: nothing to install. Otherwise
+     **1Password** if they already use it (it has a normal app), **Bitwarden** (free
+     hosted) or **SOPS+age** (files in git, no SaaS). Steer anyone with two machines
+     or a team toward a vault CLI, not the Keychain, which is one-Mac only. Then walk
+     them through the secure setup for that one. The canonical steps live in the
+     plugin's **`BACKENDS.md`**; follow it rather than improvising. The essentials:
      - Install the CLI from the **official source** (`brew install 1password-cli` /
        `bitwarden-cli` / `sops age`, or the vendor's signed installer), never a
-       random `curl | sh`.
+       random `curl | sh`. The Keychain needs no install.
+     - **macOS Keychain:** `security add-generic-password -s <tool> -a mcp -w`, one
+       per key. The bare `-w` prompts for the value, so never type it on the command
+       line. References look like `keychain://<tool>/mcp`.
      - **1Password:** enable CLI integration in the app, then `op signin`.
      - **Bitwarden:** `bw login`, then `export BW_SESSION="$(bw unlock --raw)"`.
      - **SOPS:** `install.sh` offers to generate the age key (`chmod 600`, never

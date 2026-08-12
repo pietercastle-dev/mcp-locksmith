@@ -83,6 +83,14 @@ class Exfil(unittest.TestCase):
     def test_vault_reference_is_not_a_secret(self):
         e = Env(servers={})
         self.assertEqual(call("mcp__x__y", {"ref": "op://Work/github/token"}, e), "allow")
+        self.assertEqual(call("mcp__x__y", {"ref": "keychain://github/token"}, e), "allow")
+
+    def test_reference_with_token_shaped_segment_is_not_a_secret(self):
+        # SAFE_REF must cover keychain:// too: the item name can legitimately
+        # look like a token shape without any value being present.
+        e = Env(servers={})
+        self.assertEqual(
+            call("mcp__x__y", {"ref": "keychain://openai/sk-EXAMPLEONLYnotarealkey000"}, e), "allow")
 
     def test_ordinary_payload(self):
         e = Env(servers={})
