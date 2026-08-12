@@ -15,6 +15,7 @@ Usage: mcp-doctor [--launch] [config.json ...]
   and reports whether it starts and speaks MCP, with the server's own stderr
   when it doesn't. The troubleshooting mode /mcp-secure:fix uses.
 """
+import hashlib
 import json
 import os
 import re
@@ -239,6 +240,27 @@ def approval_state(name, approval):
     return "unapproved"
 
 
+# keep in sync: mirrors mcp-pin's identity() and pins file. A pin for the exact
+# identity (name+command+args) is durable consent — pinning required an explicit
+# adoption — so a pinned server stays diagnosable outside Claude Code sessions.
+_PINS_FILE = os.path.expanduser(os.environ.get("MCP_PINS_FILE", "~/.config/mcp-secret/pins.json"))
+
+
+def _pin_identity(name, spec):
+    cmd = os.path.expandvars(spec.get("command", ""))
+    args = [os.path.expandvars(a) if isinstance(a, str) else a
+            for a in (spec.get("args") or [])]
+    raw = name + "\0" + cmd + "\0" + json.dumps(args, sort_keys=True)
+    return hashlib.sha256(raw.encode()).hexdigest()[:16]
+
+
+def _pinned_identities():
+    try:
+        return set(json.load(open(_PINS_FILE)))
+    except Exception:
+        return set()
+
+
 def refs_from_server(spec):
     refs = set()
     args = spec.get("args") or []
@@ -288,6 +310,8 @@ for p in paths:
             for where in inline_secrets(spec):
                 inline_found.append((p, name, where))
             state = approval_state(name, approval) if project_scope else "approved"
+            if state == "unapproved" and _pin_identity(name, spec) in _pinned_identities():
+                state = "approved"   # an existing pin is durable consent
             if state != "approved":
                 unapproved.append((p, name, state)); continue
             all_servers.append((name, spec))

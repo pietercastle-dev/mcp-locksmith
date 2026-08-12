@@ -457,6 +457,7 @@ def select(names):
     approval record encodes."""
     servers, origin = discover_scoped()
     approval = project_approval(os.getcwd())
+    pins = load_pins()
     sel, skipped = {}, []
     for n, s in servers.items():
         if names:
@@ -465,6 +466,15 @@ def select(names):
             continue
         if origin.get(n) == "project":
             state = approval_state(n, approval)
+            if state == "unapproved":
+                # An existing pin for this exact identity (name+command+args)
+                # is durable consent: pinning required an explicit adoption.
+                # A hostile config can only "reuse" it by being byte-identical
+                # to what the user already approved. Explicit disable is the
+                # more specific signal and is checked first, so it still wins.
+                cmd, args = spec_target(s)
+                if identity(n, cmd, args) in pins:
+                    sel[n] = s; continue
             if state != "approved":
                 skipped.append((n, state)); continue
         sel[n] = s

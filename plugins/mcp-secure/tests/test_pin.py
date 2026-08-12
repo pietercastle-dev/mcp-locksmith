@@ -307,6 +307,44 @@ class ProjectApproval(PinFixture, unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stdout)
         self.assertIn("unchanged", r.stdout)
 
+    def test_existing_pin_is_durable_consent_for_a_sweep(self):
+        # Adopt (pin) a project server while approved, then lose the approval
+        # record (fresh machine / new clone). A bare sweep must still verify it:
+        # the pin is proof the user already said yes to THIS exact identity.
+        self.write_config(env={"FAKE_TOOLS": "alpha,beta"})
+        self.pin("pin")
+        self.approve()  # approval revoked, pin remains
+        r = self.pin("verify")  # no name given: a sweep
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertIn("unchanged", r.stdout)
+        self.assertNotIn("not approved", r.stdout)
+
+    def test_explicit_disable_beats_an_existing_pin(self):
+        # A by-name "no" in Claude Code is the most specific signal: even a
+        # pinned server is skipped when the user explicitly turned it off.
+        self.write_config(env={"FAKE_TOOLS": "alpha,beta"})
+        self.pin("pin")
+        self.approve(disabled=["fake"])
+        r = self.pin("verify")
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertIn("turned off", r.stdout)
+        self.assertNotIn("unchanged (", r.stdout)  # the per-server verify line
+
+    def test_pin_for_a_different_identity_is_not_consent(self):
+        # A pin only counts as consent for the exact name+command+args it was
+        # taken against. A hostile .mcp.json with different args is still gated.
+        self.write_config(env={"FAKE_TOOLS": "alpha,beta"})
+        self.pin("pin")
+        self.approve()  # approval revoked
+        # Mutate args so the identity no longer matches the stored pin.
+        cfg = os.path.join(self.root, ".mcp.json")
+        data = json.load(open(cfg))
+        data["mcpServers"]["fake"]["args"] = [FAKE, "--extra"]
+        json.dump(data, open(cfg, "w"))
+        r = self.pin("verify")
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertIn("not approved", r.stdout)
+
     def test_user_scope_server_is_never_gated(self):
         # ~/.claude.json servers were added deliberately; only project scope,
         # which arrives with a repo, needs an approval record.

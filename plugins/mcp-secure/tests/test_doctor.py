@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Tests for mcp-doctor's config scanning (inline secrets + reference collection),
 with a stubbed resolver so no real backend is needed. Run: python test_doctor.py"""
+import hashlib
 import json
 import os
 import stat
@@ -35,10 +36,12 @@ class DoctorEnv(unittest.TestCase):
                               capture_output=True, text=True, env=env)
 
     def project_doctor(self, servers, *flags, approved=None, enable_all=False,
-                       disabled=(), trusted=False):
+                       disabled=(), trusted=False, pinned=()):
         """Point mcp-doctor at a real project `.mcp.json`, with (or without)
         Claude Code's approval record for that directory in a redirected HOME.
-        approved=None means no record at all, i.e. a freshly cloned repo."""
+        approved=None means no record at all, i.e. a freshly cloned repo.
+        pinned=names writes a pins.json with those servers' exact identities,
+        modeling servers the user already adopted."""
         proj = os.path.join(self.root, "proj")
         os.makedirs(proj, exist_ok=True)
         cfg = os.path.join(proj, ".mcp.json")
@@ -52,9 +55,20 @@ class DoctorEnv(unittest.TestCase):
                 "hasTrustDialogAccepted": trusted,
             }
         json.dump({"projects": record}, open(os.path.join(self.root, ".claude.json"), "w"))
+        pins_file = os.path.join(self.root, "pins.json")
+        pins = {}
+        for name in pinned:
+            spec = servers[name]
+            cmd = os.path.expandvars(spec.get("command", ""))
+            args = [os.path.expandvars(a) if isinstance(a, str) else a
+                    for a in (spec.get("args") or [])]
+            raw = name + "\0" + cmd + "\0" + json.dumps(args, sort_keys=True)
+            pins[hashlib.sha256(raw.encode()).hexdigest()[:16]] = {"tools": {}}
+        json.dump(pins, open(pins_file, "w"))
         env = dict(os.environ, MCP_SECRET_BIN=self.resolver, HOME=self.root,
                    MCP_SECRET_CONFIG=os.path.join(self.root, "none"),
-                   MCP_ORG_CONFIG=os.path.join(self.root, "none"))
+                   MCP_ORG_CONFIG=os.path.join(self.root, "none"),
+                   MCP_PINS_FILE=pins_file)
         return subprocess.run([sys.executable, DOCTOR, *flags, cfg],
                               capture_output=True, text=True, env=env)
 
@@ -168,6 +182,23 @@ class DoctorEnv(unittest.TestCase):
         self.assertIn("launches and speaks MCP (2 tools)", r.stdout)
         # …unless the server is turned off by name.
         r = self.project_doctor(spec, "--launch", enable_all=True, disabled=["f"])
+        self.assertIn("turned off for this project", r.stdout)
+        self.assertNotIn("launches and speaks MCP", r.stdout)
+
+    def test_existing_pin_lets_a_project_server_launch_without_approval(self):
+        # A pinned server was already adopted, so --launch diagnostics stay
+        # available even after the approval record is gone (fresh machine).
+        fake = os.path.join(HERE, "fake_mcp_server.py")
+        spec = {"f": {"command": sys.executable, "args": [fake], "env": {"FAKE_TOOLS": "a,b"}}}
+        r = self.project_doctor(spec, "--launch", approved=None, pinned=["f"])
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertIn("launches and speaks MCP (2 tools)", r.stdout)
+        self.assertNotIn("awaiting your approval", r.stdout)
+
+    def test_pin_does_not_override_an_explicit_disable(self):
+        fake = os.path.join(HERE, "fake_mcp_server.py")
+        spec = {"f": {"command": sys.executable, "args": [fake], "env": {"FAKE_TOOLS": "a,b"}}}
+        r = self.project_doctor(spec, "--launch", disabled=["f"], pinned=["f"])
         self.assertIn("turned off for this project", r.stdout)
         self.assertNotIn("launches and speaks MCP", r.stdout)
 
