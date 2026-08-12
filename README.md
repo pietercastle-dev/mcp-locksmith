@@ -34,12 +34,14 @@ bash/python scripts). Then, only as you need them:
 
 - **To run most tools:** Node.js (`npx`) and/or Python (`uvx`). `python3` also
   runs the secret-leak guard hook, so without it that guard silently won't run.
-- **Only if a tool needs a key:** somewhere safe to keep it. On a **Mac that's
-  already there**: the built-in **Keychain**, nothing to install. Otherwise one
-  vault CLI, either **1Password** (`op`), **Bitwarden** (`bw`), or **SOPS**
-  (`sops`), which is also what to use if you want the same keys on more than one
-  machine or shared with a team. Setup helps you pick; secure step-by-step for
-  each is in **[`BACKENDS.md`](plugins/mcp-secure/BACKENDS.md)**.
+- **Only if a tool needs a key:** somewhere safe to keep it. A **vault CLI** is
+  the first pick if you have one — **1Password** (`op`) or **Bitwarden** (`bw`)
+  — and the only option that keeps the same keys on more than one machine or
+  shares them with a team. **No vault, on a Mac?** The built-in **Keychain**
+  works with nothing to install. **SOPS** (`sops`) is the deliberate choice when
+  you want the encrypted secrets committed to a git repo. Setup helps you pick;
+  secure step-by-step for each is in
+  **[`BACKENDS.md`](plugins/mcp-secure/BACKENDS.md)**.
 
 ## What you can do
 

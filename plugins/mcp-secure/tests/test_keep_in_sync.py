@@ -66,7 +66,25 @@ SAFE_SAMPLES = [
     "sops://secrets.yaml#/key", "bw://item/field", "Bearer ${TOKEN}",
     "keychain://cloudflare/token", "keychain://cloudflare",
     "Bearer keychain://svc/acct",
+    # an expansion followed by a path is a real config shape (SSH_AUTH_SOCK,
+    # credential files), and must stay safe now that SAFE_VAL is end-anchored
+    "${HOME}/.config/gcloud/x.json", "${TMPDIR}/ssh-x/agent.1", "$HOME/.aws/config",
 ]
+
+# SAFE_VAL must NOT accept these: a safe-looking PREFIX with something else
+# glued on. The trailing token is opaque (no SECRET_VAL shape), so SAFE_VAL is
+# the only thing standing between it and the key-name heuristic. Built by
+# concatenation, obviously fake.
+NTN = "ntn_" + "EXAMPLEONLYnotarealtoken00"
+UNSAFE_PREFIX_SAMPLES = [
+    "${EMPTY}" + NTN,               # empty expansion, then the real value
+    "${NOPE:-" + NTN + "}",         # default-value expansion holding the secret
+    "op://v/i/f " + NTN,            # a reference, then the real value
+    "Bearer ${TOKEN} " + NTN,
+    "${HOME}/x " + NTN,             # …including after the allowed path tail
+]
+# (`$VAR` + token with no separator is deliberately absent: `$VARntn_…` is a
+# single variable name to the shell too, so reading it as one is correct.)
 # Not secret-shaped and not a ref (git SHA is a deliberate SECRET_VAL exclusion).
 NEUTRAL_SAMPLES = ["a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2", "hello-world", "8080"]
 
@@ -152,6 +170,25 @@ class SafeVal(unittest.TestCase):
                 self.assertFalse(rx.search(val),
                                  "%s accepted secret %s" % (name, label))
 
+    def test_rejects_safe_prefix_with_a_value_glued_on(self):
+        # SAFE_VAL is a whitelist of WHOLE values, not of prefixes: an opaque
+        # token behind `${EMPTY}` / a vault ref must not read as a reference.
+        for name, rx in self.copies.items():
+            for val in UNSAFE_PREFIX_SAMPLES:
+                self.assertFalse(rx.search(val),
+                                 "%s accepted %r as safe" % (name, val))
+
+    def test_scheme_set_matches_call_guards_safe_ref(self):
+        # The write guard's SAFE_VAL and the runtime guard's SAFE_REF must know
+        # the same vault backends, or a fifth backend silently gets treated as a
+        # reference on one path and as an unknown value on the other.
+        ref = load(CALL_GUARD, {"SAFE_REF"})["SAFE_REF"]
+        want = set(re.findall(r"(\w+)://", ref.pattern))
+        self.assertTrue(want, "SAFE_REF lists no schemes")
+        for name, rx in self.copies.items():
+            self.assertEqual(set(re.findall(r"(\w+)://", rx.pattern)), want,
+                             "%s SAFE_VAL schemes differ from SAFE_REF" % name)
+
 
 class SecretKey(unittest.TestCase):
     """SECRET_KEY: identical across guard and doctor (doctor names it _SECRET_KEY).
@@ -175,6 +212,40 @@ class SecretKey(unittest.TestCase):
             for key in SAFE_KEYS:
                 self.assertFalse(rx.search(key),
                                  "%s false-matched key %s" % (name, key))
+
+
+class ProjectApprovalSync(unittest.TestCase):
+    """The Claude Code approval read (project_approval/approval_state) is the
+    second thing duplicated between mcp-pin and mcp-doctor: both decide whether
+    a ./.mcp.json server may be spawned, so they must decide it identically."""
+
+    def test_source_identical(self):
+        for name in ("project_approval", "approval_state"):
+            dumps = set()
+            for path in (PIN, DOCTOR):
+                tree = ast.parse(open(path).read())
+                node = next(n for n in tree.body
+                            if isinstance(n, ast.FunctionDef) and n.name == name)
+                dumps.add(ast.dump(node))
+            self.assertEqual(len(dumps), 1, "%s drifted between mcp-pin and mcp-doctor" % name)
+
+    def test_states_agree(self):
+        funcs = {"pin": load(PIN, {"approval_state"})["approval_state"],
+                 "doctor": load(DOCTOR, {"approval_state"})["approval_state"]}
+        # (enable_all, enabled, disabled, trusted) → the decision both must make.
+        cases = [
+            ((False, set(), set(), False), "unapproved"),   # never opened here
+            ((False, {"srv"}, set(), False), "approved"),   # approved by name
+            ((False, set(), {"srv"}, False), "disabled"),
+            ((True, set(), set(), False), "approved"),      # enableAllProjectMcpServers
+            ((False, set(), set(), True), "approved"),      # folder trust accepted
+            ((True, set(), {"srv"}, True), "disabled"),     # a by-name no wins
+            ((False, {"other"}, set(), False), "unapproved"),
+        ]
+        for approval, want in cases:
+            for who, fn in funcs.items():
+                self.assertEqual(fn("srv", approval), want,
+                                 "%s: %r → expected %s" % (who, approval, want))
 
 
 class Identity(unittest.TestCase):

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Tests for mcp-doctor's config scanning (inline secrets + reference collection),
 with a stubbed resolver so no real backend is needed. Run: python test_doctor.py"""
+import hashlib
 import json
 import os
 import stat
@@ -31,6 +32,48 @@ class DoctorEnv(unittest.TestCase):
         env = dict(os.environ, MCP_SECRET_BIN=self.resolver, HOME=self.root,
                    MCP_SECRET_CONFIG=secret_cfg,
                    MCP_ORG_CONFIG=os.path.join(self.root, "none"))
+        return subprocess.run([sys.executable, DOCTOR, *flags, cfg],
+                              capture_output=True, text=True, env=env)
+
+    def project_doctor(self, servers, *flags, approved=None, enable_all=False,
+                       disabled=(), trusted=False, pinned=()):
+        """Point mcp-doctor at a real project `.mcp.json`, with (or without)
+        Claude Code's approval record for that directory in a redirected HOME.
+        approved=None means no record at all, i.e. a freshly cloned repo.
+        pinned=names writes a pins.json with those servers' exact identities,
+        modeling servers the user already adopted."""
+        proj = os.path.join(self.root, "proj")
+        os.makedirs(proj, exist_ok=True)
+        cfg = os.path.join(proj, ".mcp.json")
+        json.dump({"mcpServers": servers}, open(cfg, "w"))
+        record = {}
+        if approved is not None or enable_all or disabled or trusted:
+            record[os.path.realpath(proj)] = {
+                "enabledMcpjsonServers": list(approved or []),
+                "disabledMcpjsonServers": list(disabled),
+                "enableAllProjectMcpServers": enable_all,
+                "hasTrustDialogAccepted": trusted,
+            }
+        json.dump({"projects": record}, open(os.path.join(self.root, ".claude.json"), "w"))
+        pins_file = os.path.join(self.root, "pins.json")
+        pins = {}
+        for name in pinned:
+            spec = servers[name]
+            # Compute the identity exactly as mcp-pin's spec_target does: a
+            # remote server's URL goes in the command slot with empty args.
+            if spec.get("type") in ("http", "sse") or spec.get("url"):
+                cmd, args = os.path.expandvars(spec.get("url", "")), []
+            else:
+                cmd = os.path.expandvars(spec.get("command", ""))
+                args = [os.path.expandvars(a) if isinstance(a, str) else a
+                        for a in (spec.get("args") or [])]
+            raw = name + "\0" + cmd + "\0" + json.dumps(args, sort_keys=True)
+            pins[hashlib.sha256(raw.encode()).hexdigest()[:16]] = {"tools": {}}
+        json.dump(pins, open(pins_file, "w"))
+        env = dict(os.environ, MCP_SECRET_BIN=self.resolver, HOME=self.root,
+                   MCP_SECRET_CONFIG=os.path.join(self.root, "none"),
+                   MCP_ORG_CONFIG=os.path.join(self.root, "none"),
+                   MCP_PINS_FILE=pins_file)
         return subprocess.run([sys.executable, DOCTOR, *flags, cfg],
                               capture_output=True, text=True, env=env)
 
@@ -100,6 +143,79 @@ class DoctorEnv(unittest.TestCase):
         self.assertIn("no literal secrets in config", r.stdout)
         self.assertIn("keychain://cloudflare/mcp", r.stdout)
         self.assertIn("keychain://svc/acct", r.stdout)
+
+    def test_unapproved_project_server_is_not_launched(self):
+        # A .mcp.json arrives with a cloned repo: until Claude Code has the
+        # user's approval on record, running mcp-doctor must not be what
+        # spawns its command.
+        fake = os.path.join(HERE, "fake_mcp_server.py")
+        r = self.project_doctor({"f": {"command": sys.executable, "args": [fake]}},
+                                "--launch")
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertIn("not approved in Claude Code yet", r.stdout)
+        self.assertNotIn("launches and speaks MCP", r.stdout)
+
+    def test_unapproved_project_server_still_gets_static_checks(self):
+        # Skipping the launch must not skip the config review: the inline-secret
+        # finding is exactly what an audit of a new repo is for.
+        r = self.project_doctor({"f": {"command": "srv", "env": {"GITHUB_TOKEN": GHP}}})
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn("env.GITHUB_TOKEN", r.stdout)
+        self.assertIn("not approved in Claude Code yet", r.stdout)
+
+    def test_unapproved_project_server_references_are_not_resolved(self):
+        # Resolving a reference runs the vault CLI on a string from that
+        # untrusted config, so it waits for approval too.
+        r = self.project_doctor({"a": {"command": "mcp-launch",
+                                       "args": ["--secret", "T=op://W/i/f", "--", "srv"]}})
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertIn("no secret references found", r.stdout)
+        self.assertNotIn("op://W/i/f", r.stdout)
+
+    def test_approved_project_server_launches(self):
+        fake = os.path.join(HERE, "fake_mcp_server.py")
+        spec = {"f": {"command": sys.executable, "args": [fake], "env": {"FAKE_TOOLS": "a,b"}}}
+        r = self.project_doctor(spec, "--launch", approved=["f"])
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertIn("launches and speaks MCP (2 tools)", r.stdout)
+        # enableAllProjectMcpServers is the other way to say yes…
+        r = self.project_doctor(spec, "--launch", enable_all=True)
+        self.assertIn("launches and speaks MCP (2 tools)", r.stdout)
+        # …as is an accepted folder trust dialog, which is what a real working
+        # repo has (its per-server lists stay empty).
+        r = self.project_doctor(spec, "--launch", trusted=True)
+        self.assertIn("launches and speaks MCP (2 tools)", r.stdout)
+        # …unless the server is turned off by name.
+        r = self.project_doctor(spec, "--launch", enable_all=True, disabled=["f"])
+        self.assertIn("turned off for this project", r.stdout)
+        self.assertNotIn("launches and speaks MCP", r.stdout)
+
+    def test_existing_pin_lets_a_project_server_launch_without_approval(self):
+        # A pinned server was already adopted, so --launch diagnostics stay
+        # available even after the approval record is gone (fresh machine).
+        fake = os.path.join(HERE, "fake_mcp_server.py")
+        spec = {"f": {"command": sys.executable, "args": [fake], "env": {"FAKE_TOOLS": "a,b"}}}
+        r = self.project_doctor(spec, "--launch", approved=None, pinned=["f"])
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertIn("launches and speaks MCP (2 tools)", r.stdout)
+        self.assertNotIn("awaiting your approval", r.stdout)
+
+    def test_pin_does_not_override_an_explicit_disable(self):
+        fake = os.path.join(HERE, "fake_mcp_server.py")
+        spec = {"f": {"command": sys.executable, "args": [fake], "env": {"FAKE_TOOLS": "a,b"}}}
+        r = self.project_doctor(spec, "--launch", disabled=["f"], pinned=["f"])
+        self.assertIn("turned off for this project", r.stdout)
+        self.assertNotIn("launches and speaks MCP", r.stdout)
+
+    def test_pin_consent_recognized_for_a_remote_server(self):
+        # Regression: a remote server's identity puts its URL in the command
+        # slot (mcp-pin's spec_target). A stdio-only reading of the pin would
+        # mismatch and wrongly treat a pinned HTTP server as unapproved.
+        spec = {"r": {"type": "http", "url": "https://mcp.example.com/x"}}
+        r = self.project_doctor(spec, approved=None, pinned=["r"])
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertNotIn("awaiting your approval", r.stdout)
+        self.assertNotIn("not approved in Claude Code yet", r.stdout)
 
     def test_unresolvable_reference_fails(self):
         open(self.resolver, "w").write("#!/bin/sh\necho 'nope' >&2\nexit 1\n")

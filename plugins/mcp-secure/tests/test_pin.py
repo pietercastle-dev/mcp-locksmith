@@ -12,19 +12,37 @@ PIN = os.path.join(os.path.dirname(HERE), "bin", "mcp-pin")
 FAKE = os.path.join(HERE, "fake_mcp_server.py")
 
 
-class PinEnv(unittest.TestCase):
-    """Each test gets a fresh project dir + pins file."""
+class PinFixture:
+    """Fresh project dir + pins file + a redirected HOME, per test."""
 
     def setUp(self):
         self.root = tempfile.mkdtemp(prefix="pin-test-")
         self.pins_file = os.path.join(self.root, "pins.json")
 
-    def write_config(self, env=None, name="fake"):
+    def approve(self, *names, enable_all=False, disabled=(), trusted=False,
+                record=True):
+        """Write the fake HOME's ~/.claude.json record for this project, the way
+        Claude Code does once the user has opened and approved it.
+        record=False writes a config with no entry for this project at all."""
+        projects = {}
+        if record:
+            projects[os.path.realpath(self.root)] = {
+                "enabledMcpjsonServers": list(names),
+                "disabledMcpjsonServers": list(disabled),
+                "enableAllProjectMcpServers": enable_all,
+                "hasTrustDialogAccepted": trusted,
+            }
+        json.dump({"projects": projects},
+                  open(os.path.join(self.root, ".claude.json"), "w"))
+
+    def write_config(self, env=None, name="fake", approved=True):
         spec = {"command": sys.executable, "args": [FAKE]}
         if env:
             spec["env"] = env
         json.dump({"mcpServers": {name: spec}},
                   open(os.path.join(self.root, ".mcp.json"), "w"))
+        if approved:
+            self.approve(name)
 
     def pin(self, *args, home=None):
         e = dict(os.environ, MCP_PINS_FILE=self.pins_file, MCP_PIN_TIMEOUT="30")
@@ -34,6 +52,8 @@ class PinEnv(unittest.TestCase):
         return subprocess.run([sys.executable, PIN] + list(args),
                               capture_output=True, text=True, cwd=self.root, env=e)
 
+
+class PinEnv(PinFixture, unittest.TestCase):
     def test_pin_then_verify_unchanged(self):
         self.write_config(env={"FAKE_TOOLS": "alpha,beta"})
         r = self.pin("pin")
@@ -160,6 +180,7 @@ class PinEnv(unittest.TestCase):
             "fake": {"command": sys.executable, "args": [FAKE]},
             "other": {"command": sys.executable, "args": [FAKE]}}},
             open(os.path.join(self.root, ".mcp.json"), "w"))
+        self.approve("fake", "other")
         self.pin("pin")
         # now bump only `fake` and re-pin --replace
         json.dump({"mcpServers": {
@@ -175,6 +196,7 @@ class PinEnv(unittest.TestCase):
         # SSE transport is still skipped (with an honest note).
         json.dump({"mcpServers": {"r": {"type": "sse", "url": "http://127.0.0.1:9/x"}}},
                   open(os.path.join(self.root, ".mcp.json"), "w"))
+        self.approve("r")
         r = self.pin("pin")
         self.assertEqual(r.returncode, 0)
         self.assertIn("legacy SSE", r.stdout)
@@ -204,6 +226,145 @@ class PinEnv(unittest.TestCase):
         r = self.pin("verify")
         self.assertEqual(r.returncode, 1)
         self.assertIn("boom: missing FOO_TOKEN", r.stdout)
+
+
+class ProjectApproval(PinFixture, unittest.TestCase):
+    """A ./.mcp.json ships with a cloned repo, so a sweep must not spawn its
+    servers (or run their headersHelper) before Claude Code has approval on
+    record for this directory. Reads ~/.claude.json; HOME is redirected here,
+    the real one is never touched."""
+
+    def test_no_approval_record_is_skipped_with_a_note(self):
+        self.write_config(approved=False)  # .mcp.json, no ~/.claude.json at all
+        r = self.pin("pin")
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertIn("not approved in Claude Code yet", r.stdout)
+        self.assertNotIn("pinned 1 tool(s)", r.stdout)
+        self.assertEqual(json.load(open(self.pins_file)), {})
+
+    def test_project_entry_without_the_server_is_skipped(self):
+        # The project HAS a record (other servers approved), this one isn't in it.
+        self.write_config(approved=False)
+        self.approve("somethingelse")
+        r = self.pin("verify")
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertIn("not approved in Claude Code yet", r.stdout)
+        self.assertNotIn("not pinned", r.stdout)  # never launched, so never judged
+
+    def test_enabled_server_is_launched(self):
+        self.write_config()  # write_config approves by name
+        r = self.pin("pin")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("pinned 1 tool(s)", r.stdout)
+
+    def test_disabled_server_is_skipped(self):
+        self.write_config(approved=False)
+        self.approve(disabled=["fake"])
+        r = self.pin("pin")
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertIn("turned off for this project", r.stdout)
+        self.assertEqual(json.load(open(self.pins_file)), {})
+
+    def test_disable_beats_enable_all(self):
+        # Contradictory config: the user said no to this one by name.
+        self.write_config(approved=False)
+        self.approve("fake", enable_all=True, disabled=["fake"])
+        r = self.pin("pin")
+        self.assertIn("turned off for this project", r.stdout)
+        self.assertEqual(json.load(open(self.pins_file)), {})
+
+    def test_enable_all_project_servers_launches(self):
+        self.write_config(approved=False)
+        self.approve(enable_all=True)
+        r = self.pin("pin")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("pinned 1 tool(s)", r.stdout)
+
+    def test_trusted_folder_with_empty_lists_launches(self):
+        # What a real, working repo looks like: the user accepted the folder
+        # trust dialog and the per-server lists stayed empty. Gating on the
+        # lists alone would skip every server people actually run.
+        self.write_config(approved=False)
+        self.approve(trusted=True)
+        r = self.pin("pin")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("pinned 1 tool(s)", r.stdout)
+
+    def test_trusted_folder_still_honors_an_explicit_disable(self):
+        self.write_config(approved=False)
+        self.approve(trusted=True, disabled=["fake"])
+        r = self.pin("pin")
+        self.assertIn("turned off for this project", r.stdout)
+        self.assertEqual(json.load(open(self.pins_file)), {})
+
+    def test_explicitly_named_server_always_runs(self):
+        # The escape hatch: naming it IS the user's consent.
+        self.write_config(approved=False)
+        r = self.pin("pin", "fake")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("pinned 1 tool(s)", r.stdout)
+        r = self.pin("verify", "fake")
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertIn("unchanged", r.stdout)
+
+    def test_existing_pin_is_durable_consent_for_a_sweep(self):
+        # Adopt (pin) a project server while approved, then lose the approval
+        # record (fresh machine / new clone). A bare sweep must still verify it:
+        # the pin is proof the user already said yes to THIS exact identity.
+        self.write_config(env={"FAKE_TOOLS": "alpha,beta"})
+        self.pin("pin")
+        self.approve()  # approval revoked, pin remains
+        r = self.pin("verify")  # no name given: a sweep
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertIn("unchanged", r.stdout)
+        self.assertNotIn("not approved", r.stdout)
+
+    def test_explicit_disable_beats_an_existing_pin(self):
+        # A by-name "no" in Claude Code is the most specific signal: even a
+        # pinned server is skipped when the user explicitly turned it off.
+        self.write_config(env={"FAKE_TOOLS": "alpha,beta"})
+        self.pin("pin")
+        self.approve(disabled=["fake"])
+        r = self.pin("verify")
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertIn("turned off", r.stdout)
+        self.assertNotIn("unchanged (", r.stdout)  # the per-server verify line
+
+    def test_pin_for_a_different_identity_is_not_consent(self):
+        # A pin only counts as consent for the exact name+command+args it was
+        # taken against. A hostile .mcp.json with different args is still gated.
+        self.write_config(env={"FAKE_TOOLS": "alpha,beta"})
+        self.pin("pin")
+        self.approve()  # approval revoked
+        # Mutate args so the identity no longer matches the stored pin.
+        cfg = os.path.join(self.root, ".mcp.json")
+        data = json.load(open(cfg))
+        data["mcpServers"]["fake"]["args"] = [FAKE, "--extra"]
+        json.dump(data, open(cfg, "w"))
+        r = self.pin("verify")
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertIn("not approved", r.stdout)
+
+    def test_user_scope_server_is_never_gated(self):
+        # ~/.claude.json servers were added deliberately; only project scope,
+        # which arrives with a repo, needs an approval record.
+        json.dump({"mcpServers": {"user_srv": {"command": sys.executable, "args": [FAKE]}},
+                   "projects": {}},
+                  open(os.path.join(self.root, ".claude.json"), "w"))
+        r = self.pin("pin")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("pinned 1 tool(s)", r.stdout)
+
+    def test_unpinned_project_server_keeps_its_pin_through_prune(self):
+        # prune/unpin don't launch anything, so they must still SEE a skipped
+        # server: otherwise its pin would look orphaned and get dropped.
+        self.write_config()
+        self.pin("pin")
+        self.approve()  # approval revoked (e.g. a fresh machine / new clone)
+        r = self.pin("prune", "--yes")
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertIn("no orphaned pins", r.stdout)
+        self.assertEqual(len(json.load(open(self.pins_file))), 1)
 
 
 if __name__ == "__main__":

@@ -49,7 +49,11 @@ It is **defense-in-depth, not a sandbox.** It does **not**:
 - **Protect a compromised machine.** It assumes your account, vault login, and
   age private key aren't already in an attacker's hands.
 - **Replace your vault's security.** 1Password / Bitwarden / SOPS+age, or the
-  macOS login Keychain, are the root of trust.
+  macOS login Keychain, are the root of trust. They are not equivalent at
+  runtime: the Keychain's *at-rest* story beats a passphrase-less age key on
+  disk, but at runtime any process running as you can read a login-keychain
+  item back through `security` silently — the same exposure as that age key,
+  and weaker than a vault (`op`/`bw`) that requires an authenticated session.
 - **Run on native Windows.** The helpers are bash/python and the hooks assume a
   POSIX environment; macOS and Linux are supported, Windows via WSL only.
 

@@ -9,6 +9,9 @@ GUARD = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))
 HOME = os.path.expanduser("~")
 A = "claude " + "mcp " + "add"  # avoid the literal trigger phrase in this file
 IMP = "claude " + "mcp " + "import"
+# Opaque (no recognizable token shape), so only the key-name heuristic can catch
+# it, which is exactly what a safe-looking prefix used to switch off.
+NTN = "ntn_" + "EXAMPLEONLYnotarealtoken00"
 
 CASES = [
     ("Bash: add -s user (global)",      {"tool_name": "Bash", "tool_input": {"command": f"{A} -s user foo -- bar"}}, "ask"),
@@ -58,6 +61,21 @@ CASES = [
     # stored auth header in a Write (structural scan anchors on the header name)
     (".mcp.json headers opaque bearer", {"tool_name": "Write", "tool_input": {"file_path": "/x/.mcp.json", "content": '{"mcpServers":{"s":{"type":"http","url":"https://x.example","headers":{"Authorization":"Bearer notarealopaquetokenvalue00"}}}}'}}, "deny"),
     (".mcp.json headers ${VAR} (safe)", {"tool_name": "Write", "tool_input": {"file_path": "/x/.mcp.json", "content": '{"mcpServers":{"s":{"type":"http","url":"https://x.example","headers":{"Authorization":"Bearer ${API_TOKEN}"}}}}'}}, "allow"),
+    # SAFE_VAL bypasses: a safe-looking PREFIX with the real value glued on.
+    # The value is opaque, so only the key-name heuristic can see it, and
+    # prefix-only matching used to wave all of these through.
+    (".mcp.json empty expansion + token", {"tool_name": "Write", "tool_input": {"file_path": "/x/.mcp.json", "content": '{"env":{"NOTION_TOKEN":"${EMPTY}%s"}}' % NTN}}, "deny"),
+    (".mcp.json ${VAR:-default} secret", {"tool_name": "Write", "tool_input": {"file_path": "/x/.mcp.json", "content": '{"env":{"NOTION_TOKEN":"${NOPE:-%s}"}}' % NTN}}, "deny"),
+    (".mcp.json ref then token",        {"tool_name": "Write", "tool_input": {"file_path": "/x/.mcp.json", "content": '{"env":{"NOTION_TOKEN":"op://v/i/f %s"}}' % NTN}}, "deny"),
+    (".mcp.json headers ref then token", {"tool_name": "Write", "tool_input": {"file_path": "/x/.mcp.json", "content": '{"mcpServers":{"s":{"type":"http","url":"https://x.example","headers":{"Authorization":"Bearer ${T} %s"}}}}' % NTN}}, "deny"),
+    # …while the shapes an end-anchored SAFE_VAL must keep accepting: an
+    # expansion followed by a path is ordinary config, not a hidden value.
+    (".mcp.json ${TMPDIR} socket path",  {"tool_name": "Write", "tool_input": {"file_path": "/x/.mcp.json", "content": '{"env":{"SSH_AUTH_SOCK":"${TMPDIR}/ssh-x/agent.1"}}'}}, "allow"),
+    (".mcp.json $HOME path val",         {"tool_name": "Write", "tool_input": {"file_path": "/x/.mcp.json", "content": '{"env":{"AWS_SHARED_CREDENTIALS_FILE":"$HOME/.aws/credentials"}}'}}, "allow"),
+    # attached `-eNAME=value`: the same add the spaced form denies
+    ("Bash: add -eNAME=literal secret", {"tool_name": "Bash", "tool_input": {"command": f"{A} foo -eNOTION_TOKEN={NTN} -- bar"}}, "deny"),
+    ("Bash: add --env=NAME=literal",    {"tool_name": "Bash", "tool_input": {"command": f"{A} foo --env=NOTION_TOKEN={NTN} -- bar"}}, "deny"),
+    ("Bash: add -eNAME=${VAR} (safe)",  {"tool_name": "Bash", "tool_input": {"command": f"{A} foo -eAPI_TOKEN=${{MY_TOKEN}} -- bar"}}, "allow"),
 ]
 
 

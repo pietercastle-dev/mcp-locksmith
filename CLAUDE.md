@@ -36,7 +36,11 @@ shellcheck --severity=warning plugins/mcp-secure/bin/mcp-{secret,launch,bundles}
   credential regexes (`SECRET_VAL`/`SECRET_KEY`/`SAFE_VAL`) and the server
   `identity()` hash are duplicated across mcp-guard.py, mcp-call-guard.py,
   mcp-nudge.py, mcp-doctor, and mcp-pin. Changing one means changing all.
-  Each copy has a "keep in sync" comment.
+  Each copy has a "keep in sync" comment. Same for the Claude Code approval
+  read (`project_approval`/`approval_state`, mcp-pin + mcp-doctor) that decides
+  whether a project `.mcp.json` server may be spawned, and for the vault scheme
+  set shared by `SAFE_VAL` and call-guard's `SAFE_REF`. test_keep_in_sync.py
+  enforces all of it.
 - **Bash targets 3.2** (macOS default): empty-array expansion under `set -u`
   needs `${arr+"${arr[@]}"}`; no bash-4isms.
 - **Every behavior change ships with tests**: the suites have caught four real

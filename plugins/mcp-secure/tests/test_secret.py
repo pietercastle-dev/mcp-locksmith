@@ -23,22 +23,74 @@ printf 'sops-val:%s:%s' "$3" "$4"
 """
 # fake macOS security(1). NEVER let the tests reach the real login keychain: the
 # shim shadows /usr/bin/security on a mac and supplies it on Linux CI.
-# Emits the value plus the trailing newline the real `-w` adds.
-SECURITY_SHIM = """#!/bin/sh
-svc=""; acct=""
-while [ $# -gt 0 ]; do
-  case "$1" in
-    -s) svc="$2"; shift 2 ;;
-    -a) acct="$2"; shift 2 ;;
-    *) shift ;;
-  esac
-done
-case "$svc" in
-  missing) exit 44 ;;                    # what `security` returns for "not found"
-  trailing) printf 'kc-val\\n\\n' ;;      # value that itself ends in a newline
-  *) printf 'kc-val:%s:%s\\n' "$svc" "$acct" ;;
-esac
-"""
+#
+# Faithful to the real `security find-generic-password` (behavior verified
+# against macOS 15 with a throwaway keychain, never the login one):
+#   -w   prints the value + ONE trailing newline, BUT silently LOWERCASE-HEX
+#        encodes any value containing a byte outside printable ASCII
+#        (0x20-0x7e) — a newline, a tab, an é. Nothing marks it as encoded.
+#   -g   prints the item's attributes on STDOUT and the password on STDERR, as
+#        `password: "plain"` or `password: 0xHEX  "escaped"`. The 0x form is a
+#        superset of -w's: it also kicks in for a backslash, which -w prints raw.
+#   not found (unknown service, or an EMPTY -a account) exits 44.
+SECURITY_SHIM = '''#!/usr/bin/env python3
+import sys
+
+# service -> stored value. Obviously-fake test data only.
+VALUES = {
+    "multiline": "-----BEGIN KEY-----\\nkc-line2\\n-----END KEY-----",
+    "nonascii": "kc-caf\\u00e9",
+    "hexlike": "636166c3a9",        # a plain value that merely LOOKS hex-encoded
+    "backslash": "kc\\\\val",         # plain for -w, 0x form for -g
+    "gquiet": "deadbeef",           # hex-shaped, and -g answers nothing (below)
+}
+
+argv = sys.argv[1:]
+if not argv or argv[0] != "find-generic-password":
+    sys.exit("fake security: unsupported command %r" % (argv[:1],))
+svc = acct = None
+mode = None
+i = 1
+while i < len(argv):
+    a = argv[i]
+    if a == "-s":
+        svc = argv[i + 1]; i += 2
+    elif a == "-a":
+        acct = argv[i + 1]; i += 2
+    elif a in ("-w", "-g"):
+        mode = a; i += 1
+    else:
+        i += 1
+
+# "The specified item could not be found in the keychain." -- also what real
+# `security` says for an empty account, so `-a ""` is NOT the same as no -a.
+if svc in (None, "", "missing") or acct == "":
+    sys.stderr.write(
+        "security: SecKeychainSearchCopyNext: "
+        "The specified item could not be found in the keychain.\\n")
+    sys.exit(44)
+
+val = VALUES.get(svc, "kc-val:%s:%s" % (svc, acct or ""))
+raw = val.encode("utf-8")
+
+if mode == "-w":
+    if all(0x20 <= b <= 0x7e for b in raw):
+        out = raw
+    else:
+        out = raw.hex().encode("ascii")
+    sys.stdout.buffer.write(out + b"\\n")
+elif mode == "-g":
+    sys.stdout.write('keychain: "fake.keychain"\\nclass: "genp"\\nattributes:\\n'
+                     '    "acct"<blob>="%s"\\n    "svce"<blob>="%s"\\n'
+                     % (acct or "", svc))
+    if svc == "gquiet":
+        pass                        # a -g that answers nothing: verdict unknown
+    elif all(0x20 <= b <= 0x7e and b != 0x5c for b in raw):
+        sys.stderr.write('password: "%s"\\n' % val)
+    else:
+        sys.stderr.write('password: 0x%s  "..."\\n' % raw.hex().upper())
+sys.exit(0)
+'''
 # fake uname: the keychain backend is macOS-only, so the platform check needs a
 # testable seam that works on ubuntu CI (and doesn't depend on the host's OS).
 UNAME_SHIM = """#!/bin/sh
@@ -145,12 +197,74 @@ class SecretEnv(unittest.TestCase):
         self.assertIn("add-generic-password", r.stderr)   # and the fix
         self.assertNotIn("kc-val", r.stderr)       # never echoes a value
 
-    def test_keychain_strips_exactly_one_trailing_newline(self):
-        # `security -w` appends one newline of its own; a value that itself ends
-        # in a newline must survive intact.
-        r = self.run_secret("keychain://trailing")
+    def test_keychain_plain_value_loses_only_securitys_own_newline(self):
+        # `security -w` appends one newline of its own; that one goes, and
+        # nothing else is added (callers inject the value verbatim).
+        r = self.run_secret("keychain://cloudflare/token")
         self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertEqual(r.stdout, "kc-val\n")
+        self.assertEqual(r.stdout, "kc-val:cloudflare:token")   # no trailing \n
+
+    def test_keychain_hex_encoded_value_errors_without_leaking(self):
+        # A multi-line value (a PEM key, a JSON blob) comes back hex-encoded
+        # from `security -w`. Injecting that would be a silently WRONG secret,
+        # so refuse — and say why in plain language.
+        r = self.run_secret("keychain://multiline/mcp")
+        self.assertEqual(r.returncode, 1)
+        self.assertEqual(r.stdout, "")
+        self.assertIn("not plain text", r.stderr)
+        self.assertIn("multi-line or non-ASCII", r.stderr)
+        self.assertIn("multiline", r.stderr)       # names the service
+        self.assertIn("mcp", r.stderr)             # names the account
+        self.assertNotIn("BEGIN KEY", r.stderr)    # never echoes the value
+        self.assertNotIn("2d2d2d", r.stderr)       # nor its hex encoding
+
+    def test_keychain_non_ascii_value_errors_without_leaking(self):
+        r = self.run_secret("keychain://nonascii/mcp")
+        self.assertEqual(r.returncode, 1)
+        self.assertEqual(r.stdout, "")
+        self.assertIn("not plain text", r.stderr)
+        self.assertNotIn("caf", r.stderr)          # never echoes the value
+        self.assertNotIn("6b63", r.stderr)         # nor its hex encoding
+
+    def test_keychain_plain_value_that_looks_hex_still_resolves(self):
+        # The false-positive guard: plenty of real API keys are lowercase hex.
+        # `security -g` distinguishes a stored "636166c3a9" from an encoding of
+        # "café", and the plain one must come through untouched.
+        r = self.run_secret("keychain://hexlike/mcp")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(r.stdout, "636166c3a9")
+
+    def test_keychain_backslash_value_resolves(self):
+        # `security -g` shows a backslash-bearing value in its 0x form even
+        # though `-w` prints it raw; that must not be mistaken for an encoding.
+        r = self.run_secret("keychain://backslash/mcp")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(r.stdout, "kc\\val")
+
+    def test_keychain_unverifiable_value_fails_closed(self):
+        # if the -g probe can't settle "plain or encoded?", refuse: emitting a
+        # maybe-encoded value is exactly the silent wrong-secret bug.
+        r = self.run_secret("keychain://gquiet/mcp")
+        self.assertEqual(r.returncode, 1)
+        self.assertEqual(r.stdout, "")
+        self.assertIn("could not confirm", r.stderr)
+        self.assertNotIn("deadbeef", r.stderr)
+
+    def test_keychain_empty_ref_errors(self):
+        r = self.run_secret("keychain://")
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("keychain ref needs a service", r.stderr)
+
+    def test_keychain_empty_service_errors(self):
+        r = self.run_secret("keychain:///mcp")
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("keychain ref needs a service", r.stderr)
+
+    def test_keychain_account_may_contain_slashes(self):
+        # only the FIRST slash splits: everything after it is the account
+        r = self.run_secret("keychain://cloudflare/a/b")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(r.stdout, "kc-val:cloudflare:a/b")
 
     def test_keychain_requires_macos(self):
         r = self.run_secret("keychain://cloudflare/token", FAKE_UNAME="Linux")

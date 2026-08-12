@@ -61,8 +61,17 @@ SECRET_VAL = re.compile(
 # hashes legitimately appear in configs and would be false positives.
 # Forms that are SAFE: env expansion, a bare $VAR, or an mcp-secret reference,
 # optionally behind an auth scheme, so `Bearer ${TOKEN}` reads as safe too.
+# Anchored at BOTH ends: a safe-looking prefix says nothing about what follows
+# it, and prefix-only matching let `${EMPTY}<opaque token>` or
+# `op://v/i/f <opaque token>` pass as a reference. The only tail allowed is a
+# path after an expansion (`${TMPDIR}/ssh-x/agent.1`), which is a real config
+# shape; `${VAR:-default}` is deliberately NOT safe, the default can be a
+# literal secret. Keep in sync with mcp-doctor's _SAFE_VAL (byte-identical) and
+# with the scheme set in mcp-call-guard.py's SAFE_REF.
 SAFE_VAL = re.compile(
-    r"^\s*(?:(?:Bearer|Basic|Token)\s+)?(\$\{[^}]+\}|\$[A-Za-z_]\w*|op://|sops://|bw://|keychain://)",
+    r"^\s*(?:(?:Bearer|Basic|Token)\s+)?"
+    r"(\$\{[A-Za-z_]\w*\}|\$[A-Za-z_]\w*|op://\S*|sops://\S*|bw://\S*|keychain://\S*)"
+    r"(?:[/\\][^\s]*)?\s*$",
     re.I)
 # Basenames that identify an MCP config file written via the shell.
 CONFIG_BASENAMES = (".mcp.json", ".claude.json")
@@ -144,9 +153,12 @@ if tool == "Bash":
     is_import = bool(re.search(r"\bclaude\b.+?\bmcp\b.+?\bimport\b", cmd, re.S))
     if is_add or is_import or writes_mcp_config(cmd):
         # Explicit `-e/--env NAME=literal`. Catches custom-named secrets that
-        # aren't a recognizable token shape.
+        # aren't a recognizable token shape. All four spellings: `-e NAME=`,
+        # `-e=NAME=`, the attached `-eNAME=`, and `--env[= ]NAME=`. The
+        # lookbehind keeps the `-e` from matching mid-flag (`--foo-eX=y`).
         for m in re.finditer(
-                r"(?:-e|--env)[=\s]+([A-Za-z_]\w*)=('[^']*'|\"[^\"]*\"|[^\s]+)", cmd):
+                r"(?<![\w-])(?:--env[=\s]+|-e[=\s]*)"
+                r"([A-Za-z_]\w*)=('[^']*'|\"[^\"]*\"|[^\s]+)", cmd):
             k, v = m.group(1), m.group(2).strip("'\"")
             if looks_secret(k, v):
                 out("deny", "Blocked: literal secret in `claude mcp add -e`. " + WRAPPER_HINT)

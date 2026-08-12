@@ -5,9 +5,9 @@ follow its section, then run `/mcp-secure:check` to confirm it's wired up.
 
 | Backend | Best if… | CLI | Reference form |
 |---------|----------|-----|----------------|
-| **macOS Keychain** | you're on a Mac and want nothing to install | `security` (built in) | `keychain://service/account` |
 | **1Password** | you already use 1Password | `op` | `op://Vault/item/field` |
 | **Bitwarden** | you want a free hosted vault | `bw` (+ `jq`) | `bw://item/field` |
+| **macOS Keychain** | you're on a Mac and want nothing to install | `security` (built in) | `keychain://service/account` |
 | **SOPS + age** | you prefer files in git, no SaaS | `sops`, `age` | `sops://file#/key/path` |
 
 The Keychain is the simplest choice for one Mac. A vault (1Password/Bitwarden) is
@@ -50,16 +50,28 @@ MCP_SECRET_BACKEND=keychain
 ```
 
 References: `keychain://cloudflare/mcp` (service/account), or `keychain://cloudflare`
-to match on the service alone, or the short form `cloudflare/mcp`. `mcp-secret`
-only ever **reads** (`security find-generic-password -w`); it never creates or
-changes an item, so the keychain stays yours to manage.
+to match on the service alone, or the short form `cloudflare/mcp`. Prefer the
+service/account form in configs: if several items share a service, `security`
+returns an arbitrary one of them with no warning. `mcp-secret` only ever
+**reads** (`security find-generic-password -w`); it never creates or changes an
+item, so the keychain stays yours to manage. A `keychain://` ref can name **any**
+generic-password item in your login keychain, not just ones you added for tools
+— so read a `keychain://` reference in someone else's config the way you'd read
+any other instruction to fetch something out of your keychain.
 
-Store **plain text** values: `security` hex-encodes anything with non-ASCII or
-control bytes, and the resolver does not decode that. Updating a value later:
+Store **single-line, printable** values. `security` silently hex-encodes any
+value containing a newline, a tab, or a non-ASCII character, so a multi-line
+credential (a private key, a JSON blob) reads back as a hex string that is not
+your secret; `mcp-secret` detects that and refuses rather than inject the wrong
+value — keep those in a vault backend. Updating a value later:
 `security add-generic-password -U -s cloudflare -a mcp -w`. Deleting one:
-`security delete-generic-password -s cloudflare -a mcp`. macOS may show a
-"wants to access your keychain" prompt the first time a tool launches; allow it
-(choose *Always Allow* if you don't want to be asked again).
+`security delete-generic-password -s cloudflare -a mcp`.
+
+**What this protects, and what it doesn't:** items created with the recipe
+above are read back without any prompt — so is every other item in your login
+keychain, for **any** process running as you. At rest that beats a plaintext
+key file; at runtime it's the same exposure. `op`/`bw` are stronger there
+because they need an authenticated, unlocked session.
 
 ---
 

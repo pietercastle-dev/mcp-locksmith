@@ -1,12 +1,17 @@
 name: ci
 
 # COST: `push:` used to fire on EVERY branch, so each feature commit ran the full
-# matrix — including macos-latest, billed at 10x Linux — and the PR then ran it AGAIN.
-# Now push is main-only (feature work is gated by its PR), macOS runs only where it
-# earns its 10x (PRs + manual dispatch), and concurrency cancels superseded runs.
+# matrix and the PR then ran it AGAIN. Now push is main-only (feature work is
+# gated by its PR) and concurrency cancels superseded runs. This repo is PUBLIC,
+# so GitHub-hosted runner minutes — including macos-latest — are free; the "10x
+# cost" that applies to private-repo included-minute quotas does not apply here.
+# macOS runs on every trigger below — PRs, dispatch, push to main, and release
+# tags — so a direct push or a tag push doesn't skip the coverage that caught
+# macOS-only bugs before.
 on:
   push:
     branches: [main]
+    tags: ['v*']
   pull_request:
   workflow_dispatch:
 
@@ -21,14 +26,15 @@ concurrency:
 
 jobs:
   check:
-    # Both OSes on purpose: two shipped bugs (SOPS key location, bash-3.2 empty array
-    # under set -u) were macOS-only and invisible to Linux-only CI. But macOS is 10x the
-    # cost, so run it only where it gates a merge (PR) or on demand — Linux always runs
-    # (incl. push to main). A direct push to main gets Linux; use a PR or dispatch for macOS.
+    # Both OSes, always: two shipped bugs (SOPS key location, bash-3.2 empty array
+    # under set -u) were macOS-only and invisible to Linux-only CI. This repo is
+    # public, so macos-latest minutes are free — there's no cost tradeoff to gate
+    # macOS behind PR-only, so it runs on every trigger (push to main, PRs, tag
+    # pushes, and manual dispatch).
     strategy:
       fail-fast: false
       matrix:
-        os: ${{ (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch') && fromJSON('["ubuntu-latest", "macos-latest"]') || fromJSON('["ubuntu-latest"]') }}
+        os: ["ubuntu-latest", "macos-latest"]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -41,7 +47,8 @@ jobs:
           for f in plugins/mcp-secure/bin/mcp-secret \
                    plugins/mcp-secure/bin/mcp-launch \
                    plugins/mcp-secure/bin/mcp-bundles \
-                   install.sh; do
+                   install.sh \
+                   tests/dogfood/dogfood.sh; do
             bash -n "$f"
           done
 
@@ -55,7 +62,8 @@ jobs:
                      plugins/mcp-secure/bin/mcp-secret \
                      plugins/mcp-secure/bin/mcp-launch \
                      plugins/mcp-secure/bin/mcp-bundles \
-                     install.sh
+                     install.sh \
+                     tests/dogfood/dogfood.sh
 
       - name: Python syntax
         run: |
