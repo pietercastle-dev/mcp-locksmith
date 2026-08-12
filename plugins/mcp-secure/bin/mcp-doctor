@@ -247,9 +247,15 @@ _PINS_FILE = os.path.expanduser(os.environ.get("MCP_PINS_FILE", "~/.config/mcp-s
 
 
 def _pin_identity(name, spec):
-    cmd = os.path.expandvars(spec.get("command", ""))
-    args = [os.path.expandvars(a) if isinstance(a, str) else a
-            for a in (spec.get("args") or [])]
+    # Mirror mcp-pin's spec_target: a remote server's URL sits in the command
+    # slot with empty args, so a pinned HTTP server hashes identically here and
+    # its pin is recognized as consent (a stdio-only reading would mismatch).
+    if spec.get("type") in ("http", "sse") or spec.get("url"):
+        cmd, args = os.path.expandvars(spec.get("url", "")), []
+    else:
+        cmd = os.path.expandvars(spec.get("command", ""))
+        args = [os.path.expandvars(a) if isinstance(a, str) else a
+                for a in (spec.get("args") or [])]
     raw = name + "\0" + cmd + "\0" + json.dumps(args, sort_keys=True)
     return hashlib.sha256(raw.encode()).hexdigest()[:16]
 

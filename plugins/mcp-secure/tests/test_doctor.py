@@ -59,9 +59,14 @@ class DoctorEnv(unittest.TestCase):
         pins = {}
         for name in pinned:
             spec = servers[name]
-            cmd = os.path.expandvars(spec.get("command", ""))
-            args = [os.path.expandvars(a) if isinstance(a, str) else a
-                    for a in (spec.get("args") or [])]
+            # Compute the identity exactly as mcp-pin's spec_target does: a
+            # remote server's URL goes in the command slot with empty args.
+            if spec.get("type") in ("http", "sse") or spec.get("url"):
+                cmd, args = os.path.expandvars(spec.get("url", "")), []
+            else:
+                cmd = os.path.expandvars(spec.get("command", ""))
+                args = [os.path.expandvars(a) if isinstance(a, str) else a
+                        for a in (spec.get("args") or [])]
             raw = name + "\0" + cmd + "\0" + json.dumps(args, sort_keys=True)
             pins[hashlib.sha256(raw.encode()).hexdigest()[:16]] = {"tools": {}}
         json.dump(pins, open(pins_file, "w"))
@@ -201,6 +206,16 @@ class DoctorEnv(unittest.TestCase):
         r = self.project_doctor(spec, "--launch", disabled=["f"], pinned=["f"])
         self.assertIn("turned off for this project", r.stdout)
         self.assertNotIn("launches and speaks MCP", r.stdout)
+
+    def test_pin_consent_recognized_for_a_remote_server(self):
+        # Regression: a remote server's identity puts its URL in the command
+        # slot (mcp-pin's spec_target). A stdio-only reading of the pin would
+        # mismatch and wrongly treat a pinned HTTP server as unapproved.
+        spec = {"r": {"type": "http", "url": "https://mcp.example.com/x"}}
+        r = self.project_doctor(spec, approved=None, pinned=["r"])
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertNotIn("awaiting your approval", r.stdout)
+        self.assertNotIn("not approved in Claude Code yet", r.stdout)
 
     def test_unresolvable_reference_fails(self):
         open(self.resolver, "w").write("#!/bin/sh\necho 'nope' >&2\nexit 1\n")
